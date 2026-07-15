@@ -1,3 +1,11 @@
+export interface CheckoutProduct {
+  id: number;
+  name: string;
+  description?: string | null;
+  price: number;
+  image_url?: string | null;
+}
+
 export interface CheckoutData {
   store: {
     name: string;
@@ -12,13 +20,8 @@ export interface CheckoutData {
     };
     gateways: { provider: string }[];
   };
-  product: {
-    id: number;
-    name: string;
-    description?: string | null;
-    price: number;
-    image_url?: string | null;
-  };
+  products: CheckoutProduct[];
+  total: number;
 }
 
 export interface CheckoutProcessResponse {

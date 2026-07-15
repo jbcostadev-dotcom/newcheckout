@@ -20,14 +20,14 @@ const RESERVED = new Set([
 ]);
 
 /**
- * Middleware: extracts the store identifier from:
- * 1. Path: /{store}/checkout/{id} → store from path
- * 2. Host: custom domain → store resolved by backend via custom_domain
+ * Proxy (ex-middleware no Next.js 16):
+ * 1. /{store}/checkout          → store do path (checkout app domain)
+ * 2. /checkout                  → store do host (custom domain / subdomain)
  *
- * - checkout.example.com/nike/checkout/1 → store = "nike" (from path)
- * - www.lojanike.com.br/checkout/1 → store = "www.lojanike.com.br" (from host, backend resolves)
+ * - checkout.bersenker.shop/nike/checkout?products=1 → store = "nike" (path)
+ * - www.lojanike.com.br/checkout?products=1,1,2       → store = host (rewrite)
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const hostname = request.headers.get("host")?.split(":")[0] ?? "";
   const pathname = request.nextUrl.pathname;
 
@@ -37,16 +37,16 @@ export function middleware(request: NextRequest) {
 
   const requestHeaders = new Headers(request.headers);
 
-  // Case 1: checkout.bersenker.shop/{store}/checkout/{id} — extract store from path
+  // Case 1: checkout.bersenker.shop/{store}/checkout — extract store from path
   if (hostname === CHECKOUT_APP_DOMAIN || hostname === `www.${CHECKOUT_APP_DOMAIN}`) {
-    const match = pathname.match(/^\/([^/]+)\/checkout\/.+/);
+    const match = pathname.match(/^\/([^/]+)\/checkout(?:$|[/?#])/);
     if (match && match[1]) {
       requestHeaders.set("x-store-identifier", match[1]);
     }
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  // Case 2: Custom domain / store subdomain — rewrite /checkout/{id} to /{store}/checkout/{id}
+  // Case 2: Custom domain / store subdomain — rewrite /checkout to /{store}/checkout
   let storeIdentifier: string | null = null;
 
   if (hostname.endsWith(`.${BASE_DOMAIN}`)) {
@@ -63,7 +63,7 @@ export function middleware(request: NextRequest) {
 
     // Domínios customizados e subdomínios de loja não têm o slug no path,
     // então reescrevemos internamente para a rota dinâmica existente.
-    const checkoutMatch = pathname.match(/^\/checkout\/.+/);
+    const checkoutMatch = pathname.match(/^\/checkout(?:$|[/?#])/);
     if (checkoutMatch) {
       const newUrl = new URL(request.url);
       newUrl.pathname = `/${storeIdentifier}${pathname}`;
