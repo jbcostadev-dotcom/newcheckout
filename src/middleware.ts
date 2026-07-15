@@ -46,7 +46,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  // Case 2: Custom domain — pass full hostname, backend resolves via custom_domain
+  // Case 2: Custom domain / store subdomain — rewrite /checkout/{id} to /{store}/checkout/{id}
   let storeIdentifier: string | null = null;
 
   if (hostname.endsWith(`.${BASE_DOMAIN}`)) {
@@ -60,6 +60,15 @@ export function middleware(request: NextRequest) {
 
   if (storeIdentifier) {
     requestHeaders.set("x-store-identifier", storeIdentifier);
+
+    // Domínios customizados e subdomínios de loja não têm o slug no path,
+    // então reescrevemos internamente para a rota dinâmica existente.
+    const checkoutMatch = pathname.match(/^\/checkout\/.+/);
+    if (checkoutMatch) {
+      const newUrl = new URL(request.url);
+      newUrl.pathname = `/${storeIdentifier}${pathname}`;
+      return NextResponse.rewrite(newUrl, { request: { headers: requestHeaders } });
+    }
   }
 
   return NextResponse.next({ request: { headers: requestHeaders } });
