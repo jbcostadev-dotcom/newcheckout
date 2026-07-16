@@ -20,6 +20,7 @@ interface StepPagamentoProps {
   total: number;
   pixDiscount?: number;
   cardDiscount?: number;
+  titleFontSize?: string;
 }
 
 export default function StepPagamento({
@@ -37,6 +38,7 @@ export default function StepPagamento({
   total,
   pixDiscount = 1,
   cardDiscount = 5,
+  titleFontSize = "1.25rem",
 }: StepPagamentoProps) {
   const cardValid =
     card.number.replace(/\D+/g, "").length >= 13 &&
@@ -55,7 +57,7 @@ export default function StepPagamento({
     return (
       <div className="step-card inactive" style={{ opacity: 0.6 }}>
         <div className="step-card-header">
-          <h2 className="step-card-title">Pagamento</h2>
+          <h2 className="step-card-title" style={{ fontSize: titleFontSize }}>Pagamento</h2>
           <span className="step-card-counter">3 de 3</span>
         </div>
         <p className="step-card-subtitle">Preencha os dados de entrega para continuar</p>
@@ -67,7 +69,7 @@ export default function StepPagamento({
   return (
     <div className="step-card active">
       <div className="step-card-header">
-        <h2 className="step-card-title">Pagamento</h2>
+        <h2 className="step-card-title" style={{ fontSize: titleFontSize }}>Pagamento</h2>
         <span className="step-card-counter">3 de 3</span>
       </div>
       <p className="step-card-subtitle">Todas as transações são seguras e criptografadas.</p>

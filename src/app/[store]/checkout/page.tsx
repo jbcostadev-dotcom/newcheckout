@@ -15,6 +15,7 @@ import StepEntrega from "@/components/StepEntrega";
 import StepPagamento from "@/components/StepPagamento";
 import OrderSummary, { GroupedItem } from "@/components/OrderSummary";
 import Footer from "@/components/Footer";
+import ScarcityBar from "@/components/ScarcityBar";
 
 type StepId = "dados" | "entrega" | "pagamento";
 
@@ -70,7 +71,6 @@ function CheckoutPageContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<CheckoutData | null>(null);
-  // Overrides applied em tempo real pelo editor do dashboard via postMessage.
   const [liveSettings, setLiveSettings] = useState<Partial<CheckoutData["store"]["settings"]>>({});
   const [processing, setProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "credit_card">("credit_card");
@@ -143,7 +143,6 @@ function CheckoutPageContent() {
     fetchCheckout();
   }, [productsParam, getStoreIdentifier, isPreview]);
 
-  // Recebe atualizações de personalização em tempo real do editor do dashboard.
   useEffect(() => {
     if (!isPreview) return;
     const handler = (event: MessageEvent) => {
@@ -155,7 +154,6 @@ function CheckoutPageContent() {
     return () => window.removeEventListener("message", handler);
   }, [isPreview]);
 
-  // Aplica as settings (persistidas + overrides ao vivo) nas CSS vars do checkout.
   const effectiveSettings = useMemo(
     () => ({ ...data?.store.settings, ...liveSettings }),
     [data?.store.settings, liveSettings]
@@ -314,8 +312,13 @@ function CheckoutPageContent() {
   const discountPct = paymentMethod === "pix" ? 1 : 5;
   const discountValue = displayTotal * (discountPct / 100);
 
+  const bannerHeightPx =
+    settings.banner_height === "sm" ? 60 : settings.banner_height === "lg" ? 160 : 100;
+
+  const stepTitleSize = settings.step_title_font_size || "1.25rem";
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--checkout-bg)" }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--checkout-bg)", fontSize: settings.font_size_base || "16px" }}>
       {/* ─── Header ─── */}
       <header
         style={{
@@ -335,35 +338,66 @@ function CheckoutPageContent() {
               style={{ height: 32, borderRadius: 4, objectFit: "contain" }}
             />
           )}
-          <h1 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--text-primary)" }}>
-            {store.name}
-          </h1>
+          {(settings.header_store_name_visible ?? true) && (
+            <h1 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--text-primary)" }}>
+              {store.name}
+            </h1>
+          )}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-secondary)" }}>
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-          </svg>
-          <div style={{ textAlign: "right", lineHeight: 1.2 }}>
-            <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary)", letterSpacing: 0.5 }}>PAGAMENTO</div>
-            <div style={{ fontSize: "0.65rem", fontWeight: 600, color: "var(--text-secondary)" }}>100% SEGURO</div>
+        {(settings.header_secure_badge ?? true) && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-secondary)" }}>
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            <div style={{ textAlign: "right", lineHeight: 1.2 }}>
+              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary)", letterSpacing: 0.5 }}>PAGAMENTO</div>
+              <div style={{ fontSize: "0.65rem", fontWeight: 600, color: "var(--text-secondary)" }}>100% SEGURO</div>
+            </div>
           </div>
-        </div>
+        )}
       </header>
 
-      {/* ─── Banner Message ─── */}
-      <div
-        style={{
-          background: "var(--header-banner-bg)",
-          color: "var(--header-banner-text)",
-          textAlign: "center",
-          padding: "8px 16px",
-          fontSize: "0.85rem",
-          fontWeight: 500,
-        }}
-      >
-        {settings.banner_message || "Digite aqui a mensagem"}
-      </div>
+      {/* ─── Announcement Bar ─── */}
+      {(settings.announcement_bar_enabled ?? true) && (
+        <div
+          style={{
+            background: settings.announcement_bar_bg || "#333333",
+            color: settings.announcement_bar_text_color || "#d4a843",
+            textAlign: "center",
+            padding: "8px 16px",
+            fontSize: "0.85rem",
+            fontWeight: 500,
+          }}
+        >
+          {settings.banner_message || "Digite aqui a mensagem"}
+        </div>
+      )}
+
+      {/* ─── Banner Image ─── */}
+      {settings.banner_url && (
+        <div style={{ width: "100%", overflow: "hidden" }}>
+          <img
+            src={settings.banner_url}
+            alt="Banner"
+            style={{
+              width: "100%",
+              height: bannerHeightPx,
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+        </div>
+      )}
+
+      {/* ── Scarcity Bar ─── */}
+      {settings.scarcity_enabled && (
+        <ScarcityBar
+          type={(settings.scarcity_type as "countdown" | "stock" | "visitors") || "countdown"}
+          text={settings.scarcity_text}
+          countdownMinutes={settings.scarcity_countdown_minutes || 15}
+        />
+      )}
 
       {/* ─── Order Paid Success ─── */}
       {orderPaid ? (
@@ -406,6 +440,96 @@ function CheckoutPageContent() {
             </p>
           </div>
         </div>
+      ) : pixQrCode ? (
+        /* ─── Pix Confirmation Screen ─── */
+        <div style={{
+          display: "flex",
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 32,
+        }}>
+          <div
+            style={{
+              background: "var(--card-bg)",
+              border: "1px solid var(--border-color)",
+              borderRadius: 16,
+              padding: 48,
+              textAlign: "center",
+              maxWidth: 480,
+              width: "100%",
+            }}
+          >
+            {settings.pix_confirmation_logo && (
+              <img
+                src={settings.pix_confirmation_logo}
+                alt="Pix"
+                style={{ height: 48, margin: "0 auto 16px", display: "block" }}
+              />
+            )}
+            <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)" }}>
+              {settings.pix_confirmation_title || "Aguardando pagamento..."}
+            </h2>
+            {settings.pix_confirmation_message && (
+              <p style={{ marginTop: 8, fontSize: "0.9rem", color: "var(--text-muted)" }}>
+                {settings.pix_confirmation_message}
+              </p>
+            )}
+            <div style={{ marginTop: 24, padding: 16, background: "var(--input-bg)", borderRadius: 12 }}>
+              <img
+                src={pixQrCode}
+                alt="QR Code Pix"
+                style={{ width: 200, height: 200, margin: "0 auto", display: "block" }}
+              />
+            </div>
+            {pixCopiaCola && (
+              <div style={{ marginTop: 16 }}>
+                <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginBottom: 8 }}>
+                  Pix Copia e Cola:
+                </p>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    alignItems: "center",
+                  }}
+                >
+                  <input
+                    readOnly
+                    value={pixCopiaCola}
+                    style={{
+                      flex: 1,
+                      padding: "10px 12px",
+                      borderRadius: 8,
+                      border: "1px solid var(--border-color)",
+                      background: "var(--input-bg)",
+                      color: "var(--text-primary)",
+                      fontSize: "0.8rem",
+                      fontFamily: "monospace",
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(pixCopiaCola);
+                    }}
+                    style={{
+                      padding: "10px 16px",
+                      borderRadius: 8,
+                      border: "none",
+                      background: "var(--green-primary)",
+                      color: "#fff",
+                      fontWeight: 600,
+                      fontSize: "0.85rem",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Copiar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       ) : (
         /* ─── Main 3-Column Layout ─── */
         <main
@@ -436,6 +560,7 @@ function CheckoutPageContent() {
               onEdit={() => handleEditStep("dados")}
               isActive={step === "dados"}
               isCompleted={completed.includes("dados")}
+              titleFontSize={stepTitleSize}
             />
 
             <StepEntrega
@@ -445,6 +570,7 @@ function CheckoutPageContent() {
               onEdit={() => handleEditStep("entrega")}
               isActive={step === "entrega"}
               isCompleted={completed.includes("entrega")}
+              titleFontSize={stepTitleSize}
             />
           </div>
 
@@ -463,6 +589,7 @@ function CheckoutPageContent() {
               buttonText={settings.button_text || "Finalizar Compra"}
               isActive={step === "pagamento"}
               total={displayTotal}
+              titleFontSize={stepTitleSize}
             />
           </div>
 
@@ -480,16 +607,41 @@ function CheckoutPageContent() {
                 items={groupedItems}
                 total={displayTotal}
                 discount={step === "pagamento" ? discountValue : 0}
+                title={settings.summary_title || "Resumo do pedido"}
+                showDiscount={settings.summary_show_discount ?? true}
+                couponEnabled={settings.summary_coupon_enabled ?? true}
               />
             </div>
           </div>
         </main>
       )}
 
-      <Footer />
+      <Footer
+        footer_text={settings.footer_text}
+        footer_show_cnpj={settings.footer_show_cnpj}
+        footer_cnpj={settings.footer_cnpj}
+      />
+
+      {/* ─── Google Font Loader ─── */}
+      {settings.font_family && settings.font_family !== "Inter" && (
+        <link
+          href={`https://fonts.googleapis.com/css2?family=${settings.font_family.replace(/ /g, "+")}:wght@300;400;500;600;700&display=swap`}
+          rel="stylesheet"
+        />
+      )}
 
       {/* ─── Responsive Styles ─── */}
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=${settings.font_family ? settings.font_family.replace(/ /g, "+") : "Inter"}:wght@300;400;500;600;700&display=swap');
+
+        html {
+          font-family: '${settings.font_family || "Inter"}', ui-sans-serif, system-ui, sans-serif;
+        }
+
+        .step-card-title {
+          font-size: ${stepTitleSize} !important;
+        }
+
         @media (max-width: 1024px) {
           .checkout-main {
             grid-template-columns: 1fr 1fr !important;

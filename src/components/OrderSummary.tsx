@@ -14,6 +14,9 @@ interface OrderSummaryProps {
   total: number;
   onQtyChange?: (productId: number, delta: number) => void;
   discount?: number;
+  title?: string;
+  showDiscount?: boolean;
+  couponEnabled?: boolean;
 }
 
 const REVIEWS = [
@@ -46,19 +49,24 @@ export default function OrderSummary({
   total,
   onQtyChange,
   discount = 0,
+  title = "Resumo do pedido",
+  showDiscount = true,
+  couponEnabled = true,
 }: OrderSummaryProps) {
   const finalTotal = total - discount;
 
   return (
     <div>
       {/* Title */}
-      <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: 12 }}>Resumo do pedido</h2>
+      <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: 12 }}>{title}</h2>
 
       {/* Coupon link */}
-      <button type="button" className="coupon-link" style={{ marginBottom: 16 }}>
-        <span>🎟️</span>
-        Inserir cupom de desconto
-      </button>
+      {couponEnabled && (
+        <button type="button" className="coupon-link" style={{ marginBottom: 16 }}>
+          <span>🎟️</span>
+          Inserir cupom de desconto
+        </button>
+      )}
 
       {/* Price breakdown */}
       <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
@@ -66,7 +74,7 @@ export default function OrderSummary({
           <span>Produtos</span>
           <span>{formatCurrency(total)}</span>
         </div>
-        {discount > 0 && (
+        {showDiscount && discount > 0 && (
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}>
             <span>Descontos</span>
             <span style={{ color: "#2e7d32" }}>-{formatCurrency(discount)} <span style={{ fontSize: "0.7rem", cursor: "pointer" }}>▼</span></span>

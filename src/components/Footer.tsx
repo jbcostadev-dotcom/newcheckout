@@ -2,7 +2,17 @@
 
 import React from "react";
 
-export default function Footer() {
+interface FooterProps {
+  footer_text?: string;
+  footer_show_cnpj?: boolean;
+  footer_cnpj?: string | null;
+}
+
+export default function Footer({
+  footer_text = "Ambiente seguro · SSL criptografado",
+  footer_show_cnpj = false,
+  footer_cnpj,
+}: FooterProps) {
   return (
     <footer
       style={{
@@ -14,8 +24,13 @@ export default function Footer() {
       }}
     >
       <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-        🔒 Ambiente seguro · SSL criptografado
+        {footer_text}
       </span>
+      {footer_show_cnpj && footer_cnpj && (
+        <div style={{ marginTop: 4, fontSize: "0.7rem" }}>
+          CNPJ: {footer_cnpj}
+        </div>
+      )}
     </footer>
   );
 }
