@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState, useCallback, useMemo } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { apiGet, apiPost } from "@/lib/api";
 import {
   CheckoutData,
@@ -64,6 +64,7 @@ export default function CheckoutPage() {
 
 function CheckoutPageContent() {
   const params = useParams();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const storeSlug = params.store as string;
   const isPreview = searchParams.get("preview") === "1";
@@ -105,8 +106,6 @@ function CheckoutPageContent() {
   const [step, setStep] = useState<StepId>("dados");
   const [completed, setCompleted] = useState<StepId[]>([]);
 
-  const [pixQrCode, setPixQrCode] = useState<string | null>(null);
-  const [pixCopiaCola, setPixCopiaCola] = useState<string | null>(null);
   const [orderPaid, setOrderPaid] = useState(false);
 
   const getStoreIdentifier = useCallback((): string => {
@@ -263,10 +262,31 @@ function CheckoutPageContent() {
       return;
     }
 
-    if (isPreview) {
-      alert("Modo de visualização: o pagamento não é processado no editor.");
-      return;
-    }
+      if (isPreview) {
+        if (paymentMethod === "pix") {
+          try {
+            sessionStorage.setItem(
+              "pix_page_settings",
+              JSON.stringify({
+                logo_url: data?.store.settings.logo_url,
+                header_store_name_visible: data?.store.settings.header_store_name_visible,
+                header_secure_badge: data?.store.settings.header_secure_badge,
+                primary_color: data?.store.settings.primary_color,
+                dark_mode: data?.store.settings.dark_mode,
+                font_family: data?.store.settings.font_family,
+                font_size_base: data?.store.settings.font_size_base,
+              })
+            );
+          } catch {
+            // ignore storage errors
+          }
+          markCompleted("pagamento");
+          router.push(`/${storeSlug}/pix/preview?preview=1`);
+        } else {
+          alert("Modo de visualização: o pagamento não é processado no editor.");
+        }
+        return;
+      }
 
     setProcessing(true);
     try {
@@ -289,10 +309,26 @@ function CheckoutPageContent() {
 
       if (res.status === "paid") {
         setOrderPaid(true);
-      } else if (res.pix_qrcode) {
-        setPixQrCode(res.pix_qrcode);
-        setPixCopiaCola(res.pix_copia_cola ?? "");
+      } else if (res.order_id) {
+        // Salva as configurações da loja para reutilizar na página PIX.
+        try {
+          sessionStorage.setItem(
+            "pix_page_settings",
+            JSON.stringify({
+              logo_url: data?.store.settings.logo_url,
+              header_store_name_visible: data?.store.settings.header_store_name_visible,
+              header_secure_badge: data?.store.settings.header_secure_badge,
+              primary_color: data?.store.settings.primary_color,
+              dark_mode: data?.store.settings.dark_mode,
+              font_family: data?.store.settings.font_family,
+              font_size_base: data?.store.settings.font_size_base,
+            })
+          );
+        } catch {
+          // ignore storage errors
+        }
         markCompleted("pagamento");
+        router.push(`/${storeSlug}/pix/${res.order_id}`);
       }
     } catch (err) {
       alert(err instanceof Error ? err.message : "Erro ao processar pagamento.");
@@ -470,96 +506,6 @@ function CheckoutPageContent() {
             </p>
           </div>
         </div>
-      ) : pixQrCode ? (
-        /* ─── Pix Confirmation Screen ─── */
-        <div style={{
-          display: "flex",
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 32,
-        }}>
-          <div
-            style={{
-              background: "var(--card-bg)",
-              border: "1px solid var(--border-color)",
-              borderRadius: 16,
-              padding: 48,
-              textAlign: "center",
-              maxWidth: 480,
-              width: "100%",
-            }}
-          >
-            {settings.pix_confirmation_logo && (
-              <img
-                src={settings.pix_confirmation_logo}
-                alt="Pix"
-                style={{ height: 48, margin: "0 auto 16px", display: "block" }}
-              />
-            )}
-            <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)" }}>
-              {settings.pix_confirmation_title || "Aguardando pagamento..."}
-            </h2>
-            {settings.pix_confirmation_message && (
-              <p style={{ marginTop: 8, fontSize: "0.9rem", color: "var(--text-muted)" }}>
-                {settings.pix_confirmation_message}
-              </p>
-            )}
-            <div style={{ marginTop: 24, padding: 16, background: "var(--input-bg)", borderRadius: 12 }}>
-              <img
-                src={pixQrCode}
-                alt="QR Code Pix"
-                style={{ width: 200, height: 200, margin: "0 auto", display: "block" }}
-              />
-            </div>
-            {pixCopiaCola && (
-              <div style={{ marginTop: 16 }}>
-                <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginBottom: 8 }}>
-                  Pix Copia e Cola:
-                </p>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    alignItems: "center",
-                  }}
-                >
-                  <input
-                    readOnly
-                    value={pixCopiaCola}
-                    style={{
-                      flex: 1,
-                      padding: "10px 12px",
-                      borderRadius: 8,
-                      border: "1px solid var(--border-color)",
-                      background: "var(--input-bg)",
-                      color: "var(--text-primary)",
-                      fontSize: "0.8rem",
-                      fontFamily: "monospace",
-                    }}
-                  />
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(pixCopiaCola);
-                    }}
-                    style={{
-                      padding: "10px 16px",
-                      borderRadius: 8,
-                      border: "none",
-                      background: "var(--green-primary)",
-                      color: "#fff",
-                      fontWeight: 600,
-                      fontSize: "0.85rem",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Copiar
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
       ) : (
         /* ─── Main 3-Column Layout ─── */
         <main
@@ -617,9 +563,9 @@ function CheckoutPageContent() {
               setCard={setCard}
               onFinalize={handlePayment}
               processing={processing}
-              awaitingPix={Boolean(pixQrCode)}
-              pixQrCode={pixQrCode}
-              pixCopiaCola={pixCopiaCola}
+              awaitingPix={false}
+              pixQrCode={null}
+              pixCopiaCola={null}
               buttonText={settings.button_text || "Finalizar Compra"}
               isActive={step === "pagamento"}
               total={displayTotal}

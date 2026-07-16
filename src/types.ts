@@ -85,3 +85,13 @@ export interface CheckoutProcessResponse {
   pix_qrcode?: string;
   pix_copia_cola?: string;
 }
+
+export interface PixStatusResponse {
+  order_id: number;
+  status: "pending" | "paid" | "failed" | "expired" | string;
+  pix_qrcode?: string | null;
+  pix_copia_cola?: string | null;
+  total: number;
+  created_at?: string | null;
+  store_name?: string | null;
+}
