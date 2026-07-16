@@ -39,6 +39,7 @@ export interface CardData {
   expiry: string;
   cvv: string;
   holder: string;
+  holder_document: string;
   installments: number;
 }
 

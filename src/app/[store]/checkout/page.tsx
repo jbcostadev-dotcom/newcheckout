@@ -10,12 +10,13 @@ import {
   ShippingAddress,
   CardData,
 } from "@/types";
-import Stepper, { StepId } from "@/components/Stepper";
 import StepDados from "@/components/StepDados";
 import StepEntrega from "@/components/StepEntrega";
 import StepPagamento from "@/components/StepPagamento";
 import OrderSummary, { GroupedItem } from "@/components/OrderSummary";
 import Footer from "@/components/Footer";
+
+type StepId = "dados" | "entrega" | "pagamento";
 
 function groupProductsByIds(
   products: CheckoutProduct[],
@@ -42,8 +43,15 @@ export default function CheckoutPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-[#0a0a1a] text-white">
-          <div className="animate-pulse text-lg">Carregando...</div>
+        <div style={{
+          display: "flex",
+          minHeight: "100vh",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--checkout-bg)",
+          color: "var(--text-primary)",
+        }}>
+          <div style={{ fontSize: "1.1rem", opacity: 0.6 }}>Carregando...</div>
         </div>
       }
     >
@@ -62,9 +70,7 @@ function CheckoutPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<CheckoutData | null>(null);
   const [processing, setProcessing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"pix" | "credit_card">(
-    "pix"
-  );
+  const [paymentMethod, setPaymentMethod] = useState<"pix" | "credit_card">("credit_card");
 
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -86,6 +92,7 @@ function CheckoutPageContent() {
     expiry: "",
     cvv: "",
     holder: "",
+    holder_document: "",
     installments: 1,
   });
 
@@ -142,8 +149,6 @@ function CheckoutPageContent() {
       )
     : [];
 
-  const goToStep = (s: StepId) => setStep(s);
-
   const markCompleted = (s: StepId) => {
     setCompleted((prev) => (prev.includes(s) ? prev : [...prev, s]));
   };
@@ -158,8 +163,8 @@ function CheckoutPageContent() {
     setStep("pagamento");
   };
 
-  const handleJump = (s: StepId) => {
-    if (completed.includes(s) || s === step) setStep(s);
+  const handleEditStep = (s: StepId) => {
+    setStep(s);
   };
 
   const handlePayment = async () => {
@@ -204,18 +209,32 @@ function CheckoutPageContent() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0a0a1a] text-white">
-        <div className="animate-pulse text-lg">Carregando...</div>
+      <div style={{
+        display: "flex",
+        minHeight: "100vh",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "var(--checkout-bg)",
+      }}>
+        <div style={{ fontSize: "1.1rem", opacity: 0.6 }}>Carregando...</div>
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0a0a1a] p-4 text-center text-white">
+      <div style={{
+        display: "flex",
+        minHeight: "100vh",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "var(--checkout-bg)",
+        padding: 20,
+        textAlign: "center",
+      }}>
         <div>
-          <h2 className="text-xl font-bold">Checkout indisponível</h2>
-          <p className="mt-2 text-sm opacity-60">
+          <h2 style={{ fontSize: "1.25rem", fontWeight: 700 }}>Checkout indisponível</h2>
+          <p style={{ marginTop: 8, fontSize: "0.9rem", color: "var(--text-muted)" }}>
             {error ?? "Nenhum produto encontrado."}
           </p>
         </div>
@@ -225,190 +244,211 @@ function CheckoutPageContent() {
 
   const { store } = data;
   const settings = store.settings || {};
-  const isDark = settings.dark_mode ?? true;
-  const primary = settings.primary_color || "#6366f1";
-
-  const bgBase = isDark ? "#0a0a1a" : "#f3f4f6";
-  const cardBg = isDark ? "rgba(255,255,255,0.06)" : "#ffffff";
-  const textColor = isDark ? "#ffffff" : "#1f2937";
-  const mutedText = isDark ? "rgba(255,255,255,0.55)" : "#6b7280";
-  const inputBg = isDark ? "rgba(0,0,0,0.25)" : "#f9fafb";
-  const borderColor = isDark ? "rgba(255,255,255,0.1)" : "#e5e7eb";
-
-  const inputStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "12px 16px",
-    borderRadius: 8,
-    border: `1px solid ${borderColor}`,
-    background: inputBg,
-    color: textColor,
-    outline: "none",
-    fontSize: "0.95rem",
-  };
 
   const displayTotal = groupedItems.reduce(
     (sum, g) => sum + Number(g.product.price) * g.qty,
     0
   );
 
+  const discountPct = paymentMethod === "pix" ? 1 : 5;
+  const discountValue = displayTotal * (discountPct / 100);
+
   return (
-    <div
-      className="flex min-h-screen flex-col"
-      style={{ background: bgBase, color: textColor }}
-    >
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--checkout-bg)" }}>
+      {/* ─── Header ─── */}
       <header
-        className="flex items-center gap-3 px-6 py-4"
-        style={{ background: primary, color: "#fff" }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "16px 32px",
+          background: "#ffffff",
+          borderBottom: "1px solid var(--border-color)",
+        }}
       >
-        {settings.logo_url && (
-          <img
-            src={settings.logo_url}
-            alt=""
-            className="h-8 rounded object-contain"
-          />
-        )}
-        <h1 className="text-lg font-bold">{store.name}</h1>
-        <span className="ml-auto flex items-center gap-1 text-xs opacity-80">
-          🔒 Ambiente seguro
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {settings.logo_url && (
+            <img
+              src={settings.logo_url}
+              alt=""
+              style={{ height: 32, borderRadius: 4, objectFit: "contain" }}
+            />
+          )}
+          <h1 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--text-primary)" }}>
+            {store.name}
+          </h1>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-secondary)" }}>
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+          <div style={{ textAlign: "right", lineHeight: 1.2 }}>
+            <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary)", letterSpacing: 0.5 }}>PAGAMENTO</div>
+            <div style={{ fontSize: "0.65rem", fontWeight: 600, color: "var(--text-secondary)" }}>100% SEGURO</div>
+          </div>
+        </div>
       </header>
 
-      {settings.banner_url && (
-        <img
-          src={settings.banner_url}
-          alt=""
-          className="w-full object-cover"
-          style={{ maxHeight: 200 }}
-        />
-      )}
+      {/* ─── Banner Message ─── */}
+      <div
+        style={{
+          background: "var(--header-banner-bg)",
+          color: "var(--header-banner-text)",
+          textAlign: "center",
+          padding: "8px 16px",
+          fontSize: "0.85rem",
+          fontWeight: 500,
+        }}
+      >
+        Digite aqui a mensagem
+      </div>
 
+      {/* ─── Order Paid Success ─── */}
       {orderPaid ? (
-        <div className="flex flex-1 items-center justify-center p-8">
+        <div style={{
+          display: "flex",
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 32,
+        }}>
           <div
-            className="rounded-xl p-10 text-center"
-            style={{ background: cardBg, border: `1px solid ${borderColor}` }}
+            style={{
+              background: "#ffffff",
+              border: "1px solid var(--border-color)",
+              borderRadius: 16,
+              padding: 48,
+              textAlign: "center",
+              maxWidth: 480,
+            }}
           >
             <div
-              className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full"
-              style={{ background: primary }}
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: "50%",
+                background: "var(--green-primary)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 16px",
+              }}
             >
-              <svg
-                className="h-8 w-8 text-white"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M5 13l4 4L19 7"
-                />
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold">Pagamento confirmado!</h2>
-            <p className="mt-2 text-sm" style={{ color: mutedText }}>
+            <h2 style={{ fontSize: "1.5rem", fontWeight: 700 }}>Pagamento confirmado!</h2>
+            <p style={{ marginTop: 8, fontSize: "0.9rem", color: "var(--text-muted)" }}>
               Obrigado pela sua compra. Você receberá um e-mail com os detalhes.
             </p>
           </div>
         </div>
       ) : (
-        <main className="mx-auto flex w-full max-w-5xl flex-1 gap-8 p-8 md:flex-row flex-col">
-          <div className="flex-1">
-            <div
-              className="rounded-xl p-8"
-              style={{ background: cardBg, border: `1px solid ${borderColor}` }}
-            >
-              <Stepper
-                current={step}
-                completed={completed}
-                onJump={handleJump}
-                primary={primary}
-                textColor={textColor}
-                mutedText={mutedText}
-                borderColor={borderColor}
-              />
+        /* ─── Main 3-Column Layout ─── */
+        <main
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr 340px",
+            gap: 24,
+            maxWidth: 1200,
+            width: "100%",
+            margin: "0 auto",
+            padding: "32px 24px",
+            flex: 1,
+          }}
+          className="checkout-main"
+        >
+          {/* ─── Column 1: Identificação + Entrega ─── */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <StepDados
+              name={customerName}
+              email={customerEmail}
+              phone={customerPhone}
+              document={customerDocument}
+              setName={setCustomerName}
+              setEmail={setCustomerEmail}
+              setPhone={setCustomerPhone}
+              setDocument={setCustomerDocument}
+              onContinue={handleDadosContinue}
+              onEdit={() => handleEditStep("dados")}
+              isActive={step === "dados"}
+              isCompleted={completed.includes("dados")}
+            />
 
-              {step === "dados" && (
-                <StepDados
-                  name={customerName}
-                  email={customerEmail}
-                  phone={customerPhone}
-                  document={customerDocument}
-                  setName={setCustomerName}
-                  setEmail={setCustomerEmail}
-                  setPhone={setCustomerPhone}
-                  setDocument={setCustomerDocument}
-                  onContinue={handleDadosContinue}
-                  primary={primary}
-                  textColor={textColor}
-                  mutedText={mutedText}
-                  inputStyle={inputStyle}
-                  borderColor={borderColor}
-                />
-              )}
-
-              {step === "entrega" && (
-                <StepEntrega
-                  address={address}
-                  setAddress={setAddress}
-                  onContinue={handleEntregaContinue}
-                  primary={primary}
-                  textColor={textColor}
-                  mutedText={mutedText}
-                  inputStyle={inputStyle}
-                  borderColor={borderColor}
-                />
-              )}
-
-              {step === "pagamento" && (
-                <StepPagamento
-                  paymentMethod={paymentMethod}
-                  setPaymentMethod={setPaymentMethod}
-                  card={card}
-                  setCard={setCard}
-                  onFinalize={handlePayment}
-                  processing={processing}
-                  awaitingPix={Boolean(pixQrCode)}
-                  pixQrCode={pixQrCode}
-                  pixCopiaCola={pixCopiaCola}
-                  primary={primary}
-                  textColor={textColor}
-                  inputStyle={inputStyle}
-                  borderColor={borderColor}
-                  inputBg={inputBg}
-                  buttonText={settings.button_text || "Finalizar Compra"}
-                />
-              )}
-            </div>
+            <StepEntrega
+              address={address}
+              setAddress={setAddress}
+              onContinue={handleEntregaContinue}
+              onEdit={() => handleEditStep("entrega")}
+              isActive={step === "entrega"}
+              isCompleted={completed.includes("entrega")}
+            />
           </div>
 
-          <div className="w-full md:w-[340px]">
+          {/* ─── Column 2: Pagamento ─── */}
+          <div>
+            <StepPagamento
+              paymentMethod={paymentMethod}
+              setPaymentMethod={setPaymentMethod}
+              card={card}
+              setCard={setCard}
+              onFinalize={handlePayment}
+              processing={processing}
+              awaitingPix={Boolean(pixQrCode)}
+              pixQrCode={pixQrCode}
+              pixCopiaCola={pixCopiaCola}
+              buttonText={settings.button_text || "Finalizar Compra"}
+              isActive={step === "pagamento"}
+              total={displayTotal}
+            />
+          </div>
+
+          {/* ─── Column 3: Order Summary ─── */}
+          <div style={{ position: "sticky", top: 24, alignSelf: "start" }}>
             <div
-              className="sticky top-4 rounded-xl p-8"
               style={{
-                background: cardBg,
-                border: `1px solid ${borderColor}`,
+                background: "#ffffff",
+                border: "1px solid var(--border-color)",
+                borderRadius: 12,
+                padding: 24,
               }}
             >
               <OrderSummary
                 items={groupedItems}
                 total={displayTotal}
-                primary={primary}
-                mutedText={mutedText}
-                borderColor={borderColor}
-                inputBg={inputBg}
+                discount={step === "pagamento" ? discountValue : 0}
               />
             </div>
           </div>
         </main>
       )}
 
-      <Footer
-        mutedText={mutedText}
-        cardBg={cardBg}
-        borderColor={borderColor}
-      />
+      <Footer />
+
+      {/* ─── Responsive Styles ─── */}
+      <style>{`
+        @media (max-width: 1024px) {
+          .checkout-main {
+            grid-template-columns: 1fr 1fr !important;
+          }
+          .checkout-main > div:last-child {
+            grid-column: 1 / -1;
+            position: static !important;
+          }
+        }
+        @media (max-width: 768px) {
+          .checkout-main {
+            grid-template-columns: 1fr !important;
+            padding: 16px !important;
+            gap: 16px !important;
+          }
+          .checkout-main > div:last-child {
+            position: static !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

@@ -9,25 +9,24 @@ interface StepEntregaProps {
   address: ShippingAddress;
   setAddress: React.Dispatch<React.SetStateAction<ShippingAddress>>;
   onContinue: () => void;
-  primary: string;
-  textColor: string;
-  mutedText: string;
-  inputStyle: React.CSSProperties;
-  borderColor: string;
+  onEdit?: () => void;
+  isActive: boolean;
+  isCompleted: boolean;
 }
 
 export default function StepEntrega({
   address,
   setAddress,
   onContinue,
-  primary,
-  textColor,
-  mutedText,
-  inputStyle,
-  borderColor,
+  onEdit,
+  isActive,
+  isCompleted,
 }: StepEntregaProps) {
   const [cepLoading, setCepLoading] = useState(false);
   const [cepError, setCepError] = useState<string | null>(null);
+  const [cepValidated, setCepValidated] = useState(
+    Boolean(address.cep && address.logradouro)
+  );
   const [showFields, setShowFields] = useState(
     Boolean(address.cep && address.logradouro)
   );
@@ -35,6 +34,16 @@ export default function StepEntrega({
   const cepDigits = address.cep.replace(/\D+/g, "");
   const cepValid = cepDigits.length === 8;
   const canContinue = cepValid && address.numero.trim().length > 0;
+
+  const handleCepChange = (value: string) => {
+    const v = maskCep(value);
+    setAddress((prev) => ({ ...prev, cep: v }));
+    const d = v.replace(/\D+/g, "");
+    if (d.length !== 8) {
+      setShowFields(false);
+      setCepValidated(false);
+    }
+  };
 
   const handleCepBlur = async () => {
     if (!cepValid) return;
@@ -45,6 +54,7 @@ export default function StepEntrega({
     if (!res) {
       setCepError("CEP não encontrado. Confira o número e tente novamente.");
       setShowFields(false);
+      setCepValidated(false);
       return;
     }
     setAddress((prev) => ({
@@ -53,116 +63,191 @@ export default function StepEntrega({
       cep: address.cep,
     }));
     setShowFields(true);
+    setCepValidated(true);
   };
 
   const update = (patch: Partial<ShippingAddress>) =>
     setAddress((prev) => ({ ...prev, ...patch }));
 
+  // Completed summary view
+  if (isCompleted && !isActive) {
+    const fullAddr = [
+      address.logradouro,
+      address.numero ? `${address.numero}` : "",
+      address.complemento ? `- ${address.complemento}` : "",
+    ]
+      .filter(Boolean)
+      .join(", ");
+    const cityLine = [address.bairro, `${address.cidade}/${address.uf}`, address.cep.replace(/\D+/g, "")]
+      .filter(Boolean)
+      .join(", ");
+
+    return (
+      <div className="step-card inactive">
+        <div className="step-card-header">
+          <h2 className="step-card-title">Enviar para</h2>
+          <button type="button" className="step-edit-btn" onClick={onEdit}>
+            Editar{" "}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+          </button>
+        </div>
+        <div style={{ marginTop: 8, fontSize: "0.9rem", color: "var(--text-secondary)", lineHeight: 1.6 }}>
+          <div>{fullAddr}</div>
+          <div>{cityLine}</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Inactive (not yet reached)
+  if (!isActive) {
+    return (
+      <div className="step-card inactive" style={{ opacity: 0.6 }}>
+        <div className="step-card-header">
+          <h2 className="step-card-title">Entrega</h2>
+          <span className="step-card-counter">2 de 3</span>
+        </div>
+        <p className="step-card-subtitle">Informe o endereço de entrega</p>
+      </div>
+    );
+  }
+
+  // Active form view
   return (
-    <div>
-      <h2 className="mb-6 text-lg font-bold">Endereço de Entrega</h2>
-      <div className="space-y-3">
-        <input
-          type="text"
-          inputMode="numeric"
-          placeholder="CEP *"
-          value={address.cep}
-          onChange={(e) => {
-            const v = maskCep(e.target.value);
-            setAddress((prev) => ({ ...prev, cep: v }));
-            const d = v.replace(/\D+/g, "");
-            if (d.length !== 8) setShowFields(false);
-          }}
-          onBlur={handleCepBlur}
-          style={inputStyle}
-        />
-        {cepError && (
-          <p className="text-xs" style={{ color: "#ef4444" }}>
-            {cepError}
-          </p>
-        )}
-        {cepLoading && (
-          <p className="text-xs" style={{ color: mutedText }}>
-            Buscando CEP...
-          </p>
-        )}
-        {showFields && (
-          <>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_140px]">
-              <input
-                type="text"
-                placeholder="Logradouro"
-                value={address.logradouro}
-                onChange={(e) => update({ logradouro: e.target.value })}
-                style={inputStyle}
-              />
+    <div className="step-card active">
+      <div className="step-card-header">
+        <h2 className="step-card-title">Entrega</h2>
+        <span className="step-card-counter">2 de 3</span>
+      </div>
+      <p className="step-card-subtitle">Informe o endereço de entrega</p>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {/* CEP */}
+        <div>
+          <label className="checkout-label">CEP</label>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ position: "relative", flex: cepValidated ? "0 0 200px" : "1" }}>
               <input
                 type="text"
                 inputMode="numeric"
-                placeholder="Número *"
-                value={address.numero}
-                onChange={(e) => update({ numero: e.target.value })}
-                style={inputStyle}
+                className={`checkout-input ${cepValidated ? "has-check" : ""}`}
+                placeholder="00000-000"
+                value={address.cep}
+                onChange={(e) => handleCepChange(e.target.value)}
+                onBlur={handleCepBlur}
               />
+              {cepValidated && (
+                <span className="input-check">✓</span>
+              )}
             </div>
-            <input
-              type="text"
-              placeholder="Complemento"
-              value={address.complemento ?? ""}
-              onChange={(e) => update({ complemento: e.target.value })}
-              style={inputStyle}
-            />
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {cepValidated && address.uf && (
+              <span style={{ fontSize: "0.9rem", color: "var(--text-secondary)", whiteSpace: "nowrap" }}>
+                {address.uf}/{address.cidade}
+              </span>
+            )}
+          </div>
+          {cepError && (
+            <p style={{ color: "#ef4444", fontSize: "0.75rem", marginTop: 4 }}>{cepError}</p>
+          )}
+          {cepLoading && (
+            <p style={{ color: "var(--text-muted)", fontSize: "0.75rem", marginTop: 4 }}>Buscando CEP...</p>
+          )}
+        </div>
+
+        {showFields && (
+          <>
+            {/* Endereço */}
+            <div>
+              <label className="checkout-label">Endereço</label>
+              <div style={{ position: "relative" }}>
+                <input
+                  type="text"
+                  className="checkout-input has-check"
+                  value={address.logradouro}
+                  onChange={(e) => update({ logradouro: e.target.value })}
+                />
+                {address.logradouro && (
+                  <span className="input-check">✓</span>
+                )}
+              </div>
+            </div>
+
+            {/* Nº + Bairro */}
+            <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: 12 }}>
+              <div>
+                <label className="checkout-label">Nº</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className="checkout-input"
+                  placeholder="Número"
+                  value={address.numero}
+                  onChange={(e) => update({ numero: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="checkout-label">Bairro</label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type="text"
+                    className="checkout-input has-check"
+                    value={address.bairro}
+                    onChange={(e) => update({ bairro: e.target.value })}
+                  />
+                  {address.bairro && (
+                    <span className="input-check">✓</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Complemento */}
+            <div>
+              <label className="checkout-label">
+                Complemento <span className="optional">(Opcional)</span>
+              </label>
               <input
                 type="text"
-                placeholder="Bairro"
-                value={address.bairro}
-                onChange={(e) => update({ bairro: e.target.value })}
-                style={inputStyle}
-              />
-              <input
-                type="text"
-                placeholder="Cidade"
-                value={address.cidade}
-                onChange={(e) => update({ cidade: e.target.value })}
-                style={inputStyle}
+                className="checkout-input"
+                value={address.complemento ?? ""}
+                onChange={(e) => update({ complemento: e.target.value })}
               />
             </div>
-            <input
-              type="text"
-              placeholder="UF"
-              maxLength={2}
-              value={address.uf}
-              onChange={(e) => update({ uf: e.target.value.toUpperCase().slice(0, 2) })}
-              style={inputStyle}
-            />
           </>
         )}
+
+        {/* Escolha o frete */}
+        <div>
+          <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: 10 }}>Escolha o frete:</h3>
+          <div
+            style={{
+              background: "var(--checkout-bg)",
+              borderRadius: 8,
+              padding: "20px 16px",
+              textAlign: "center",
+              color: "var(--text-muted)",
+              fontSize: "0.85rem",
+              lineHeight: 1.5,
+            }}
+          >
+            {canContinue
+              ? "Frete Grátis"
+              : "Insira o endereço de entrega para ver as formas de frete disponíveis."}
+          </div>
+        </div>
       </div>
 
       <button
         type="button"
+        className="btn-primary"
         onClick={onContinue}
         disabled={!canContinue}
-        style={{
-          width: "100%",
-          marginTop: 24,
-          padding: 16,
-          borderRadius: 8,
-          border: "none",
-          background: primary,
-          color: "#fff",
-          fontWeight: 700,
-          fontSize: "1.05rem",
-          cursor: canContinue ? "pointer" : "not-allowed",
-          opacity: canContinue ? 1 : 0.6,
-        }}
       >
-        Continuar
+        Ir para pagamento
       </button>
-      <p className="mt-3 text-xs" style={{ color: mutedText }}>
-        Frete: Grátis · Digite o CEP para liberar o endereço.
-      </p>
     </div>
   );
 }

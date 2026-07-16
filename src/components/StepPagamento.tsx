@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { maskCardExpiry, maskCardNumber, maskCvv } from "@/lib/masks";
+import { maskCardExpiry, maskCardNumber, maskCvv, maskCpf } from "@/lib/masks";
+import { formatCurrency } from "@/lib/utils";
 import type { CardData } from "@/types";
 
 interface StepPagamentoProps {
@@ -14,12 +15,11 @@ interface StepPagamentoProps {
   awaitingPix: boolean;
   pixQrCode: string | null;
   pixCopiaCola: string | null;
-  primary: string;
-  textColor: string;
-  inputStyle: React.CSSProperties;
-  borderColor: string;
-  inputBg: string;
   buttonText: string;
+  isActive: boolean;
+  total: number;
+  pixDiscount?: number;
+  cardDiscount?: number;
 }
 
 export default function StepPagamento({
@@ -32,12 +32,11 @@ export default function StepPagamento({
   awaitingPix,
   pixQrCode,
   pixCopiaCola,
-  primary,
-  textColor,
-  inputStyle,
-  borderColor,
-  inputBg,
   buttonText,
+  isActive,
+  total,
+  pixDiscount = 1,
+  cardDiscount = 5,
 }: StepPagamentoProps) {
   const cardValid =
     card.number.replace(/\D+/g, "").length >= 13 &&
@@ -48,125 +47,217 @@ export default function StepPagamento({
   const canFinalize =
     !processing && !awaitingPix && (paymentMethod === "pix" || cardValid);
 
-  const methodBtn = (id: "pix" | "credit_card", label: string) => {
-    const active = paymentMethod === id;
-    return (
-      <button
-        key={id}
-        type="button"
-        onClick={() => {
-          setPaymentMethod(id);
-          if (id === "pix") {
-            /* mantém estado do cartão */
-          }
-        }}
-        style={{
-          flex: 1,
-          padding: 14,
-          borderRadius: 8,
-          border: `2px solid ${active ? primary : borderColor}`,
-          background: active ? primary : "transparent",
-          color: active ? "#fff" : textColor,
-          fontWeight: 600,
-          cursor: "pointer",
-          fontSize: "0.95rem",
-        }}
-      >
-        {label}
-      </button>
-    );
-  };
+  const discountPct = paymentMethod === "pix" ? pixDiscount : cardDiscount;
+  const discountedTotal = total * (1 - discountPct / 100);
 
+  // Inactive state
+  if (!isActive) {
+    return (
+      <div className="step-card inactive" style={{ opacity: 0.6 }}>
+        <div className="step-card-header">
+          <h2 className="step-card-title">Pagamento</h2>
+          <span className="step-card-counter">3 de 3</span>
+        </div>
+        <p className="step-card-subtitle">Preencha os dados de entrega para continuar</p>
+      </div>
+    );
+  }
+
+  // Active state
   return (
-    <div>
-      <h2 className="mb-6 text-lg font-bold">Pagamento</h2>
-      <div className="flex gap-3">
-        {methodBtn("pix", "📱 PIX")}
-        {methodBtn("credit_card", "💳 Cartão")}
+    <div className="step-card active">
+      <div className="step-card-header">
+        <h2 className="step-card-title">Pagamento</h2>
+        <span className="step-card-counter">3 de 3</span>
+      </div>
+      <p className="step-card-subtitle">Todas as transações são seguras e criptografadas.</p>
+
+      {/* Payment Method Selection */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {/* Credit Card Option */}
+        <div
+          className={`payment-method-card ${paymentMethod === "credit_card" ? "selected" : ""}`}
+          onClick={() => setPaymentMethod("credit_card")}
+        >
+          {cardDiscount > 0 && (
+            <span className="payment-method-badge">{cardDiscount}% DE DESCONTO</span>
+          )}
+          <input
+            type="radio"
+            className="radio-custom"
+            checked={paymentMethod === "credit_card"}
+            onChange={() => setPaymentMethod("credit_card")}
+          />
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-secondary)" }}>
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+            <line x1="1" y1="10" x2="23" y2="10" />
+          </svg>
+          <span style={{ fontSize: "0.95rem", fontWeight: 500 }}>Cartão de crédito</span>
+        </div>
+
+        {/* Credit Card Form (inline, shown when credit_card selected) */}
+        {paymentMethod === "credit_card" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "4px 0 8px 0" }}>
+            <div>
+              <label className="checkout-label">Número do cartão</label>
+              <div style={{ position: "relative" }}>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className="checkout-input"
+                  placeholder="0000 0000 0000 0000"
+                  value={card.number}
+                  onChange={(e) =>
+                    setCard((prev) => ({ ...prev, number: maskCardNumber(e.target.value) }))
+                  }
+                  style={{ paddingRight: 40 }}
+                />
+                <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+                    <line x1="1" y1="10" x2="23" y2="10" />
+                  </svg>
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label className="checkout-label">Validade <span className="optional">(mês ano)</span></label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className="checkout-input"
+                  placeholder="MM/AA"
+                  value={card.expiry}
+                  onChange={(e) =>
+                    setCard((prev) => ({ ...prev, expiry: maskCardExpiry(e.target.value) }))
+                  }
+                />
+              </div>
+              <div>
+                <label className="checkout-label">Cód. de segurança</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className="checkout-input"
+                  placeholder="CVV"
+                  value={card.cvv}
+                  onChange={(e) =>
+                    setCard((prev) => ({ ...prev, cvv: maskCvv(e.target.value) }))
+                  }
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="checkout-label">Nome impresso no cartão</label>
+              <input
+                type="text"
+                className="checkout-input"
+                placeholder="Como está no cartão"
+                value={card.holder}
+                onChange={(e) =>
+                  setCard((prev) => ({ ...prev, holder: e.target.value.toUpperCase() }))
+                }
+              />
+            </div>
+
+            <div>
+              <label className="checkout-label">CPF do titular do cartão</label>
+              <input
+                type="text"
+                className="checkout-input"
+                placeholder="000.000.000-00"
+                value={card.holder_document}
+                onChange={(e) =>
+                  setCard((prev) => ({ ...prev, holder_document: maskCpf(e.target.value) }))
+                }
+              />
+            </div>
+
+            <div>
+              <label className="checkout-label">Parcelas</label>
+              <select
+                className="checkout-select"
+                value={card.installments}
+                onChange={(e) =>
+                  setCard((prev) => ({ ...prev, installments: parseInt(e.target.value) }))
+                }
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
+                  <option key={n} value={n}>
+                    {n}x de {formatCurrency(discountedTotal / n)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
+        {/* PIX Option */}
+        <div
+          className={`payment-method-card ${paymentMethod === "pix" ? "selected" : ""}`}
+          onClick={() => setPaymentMethod("pix")}
+        >
+          {pixDiscount > 0 && (
+            <span className="payment-method-badge">{pixDiscount}% DE DESCONTO</span>
+          )}
+          <input
+            type="radio"
+            className="radio-custom"
+            checked={paymentMethod === "pix"}
+            onChange={() => setPaymentMethod("pix")}
+          />
+          <svg width="20" height="20" viewBox="0 0 256 256" fill="none" style={{ color: "#2e7d32" }}>
+            <path d="M195.41 195.41a8 8 0 0 1-5.66 2.34H66.25a8 8 0 0 1-5.66-2.34l-36.68-36.69a24 24 0 0 1 0-33.94l36.68-36.69a8 8 0 0 1 5.66-2.34h123.5a8 8 0 0 1 5.66 2.34l36.68 36.69a24 24 0 0 1 0 33.94Z" stroke="currentColor" strokeWidth="16" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <span style={{ fontSize: "0.95rem", fontWeight: 500 }}>PIX</span>
+        </div>
+
+        {/* PIX info (shown when pix selected) */}
+        {paymentMethod === "pix" && !pixQrCode && (
+          <div style={{ padding: "8px 0", fontSize: "0.88rem", color: "var(--text-secondary)", lineHeight: 1.6 }}>
+            <p>O código Pix expira em 30 minutos após finalizar a compra.</p>
+            <p style={{ marginTop: 8 }}>
+              Valor no Pix: <strong>{formatCurrency(discountedTotal)}</strong>
+            </p>
+          </div>
+        )}
+
+        {/* PIX QR Code display */}
+        {pixQrCode && paymentMethod === "pix" && (
+          <div style={{ background: "var(--checkout-bg)", borderRadius: 8, padding: 16, marginTop: 8 }}>
+            <p style={{ fontSize: "0.9rem", fontWeight: 600, marginBottom: 12 }}>QR Code PIX</p>
+            <img
+              src={pixQrCode}
+              alt="QR Code PIX"
+              style={{ display: "block", margin: "0 auto", width: 192, height: 192, borderRadius: 8 }}
+            />
+            {pixCopiaCola && (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: 8,
+                  background: "rgba(0,0,0,0.05)",
+                  borderRadius: 6,
+                  fontSize: "0.75rem",
+                  fontFamily: "monospace",
+                  wordBreak: "break-all",
+                }}
+              >
+                {pixCopiaCola}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {paymentMethod === "credit_card" && (
-        <div className="mt-6 space-y-3">
-          <input
-            type="text"
-            inputMode="numeric"
-            placeholder="Número do cartão *"
-            value={card.number}
-            onChange={(e) =>
-              setCard((prev) => ({ ...prev, number: maskCardNumber(e.target.value) }))
-            }
-            style={inputStyle}
-          />
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="Validade (MM/AA) *"
-              value={card.expiry}
-              onChange={(e) =>
-                setCard((prev) => ({
-                  ...prev,
-                  expiry: maskCardExpiry(e.target.value),
-                }))
-              }
-              style={inputStyle}
-            />
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="CVV *"
-              value={card.cvv}
-              onChange={(e) =>
-                setCard((prev) => ({ ...prev, cvv: maskCvv(e.target.value) }))
-              }
-              style={inputStyle}
-            />
-          </div>
-          <input
-            type="text"
-            placeholder="Nome impresso no cartão *"
-            value={card.holder}
-            onChange={(e) =>
-              setCard((prev) => ({ ...prev, holder: e.target.value.toUpperCase() }))
-            }
-            style={inputStyle}
-          />
-        </div>
-      )}
-
-      {pixQrCode && paymentMethod === "pix" && (
-        <div className="mt-6 rounded-lg p-4" style={{ background: inputBg }}>
-          <p className="mb-3 text-sm font-medium">QR Code PIX</p>
-          <img
-            src={pixQrCode}
-            alt="QR Code PIX"
-            className="mx-auto mb-3 h-48 w-48 rounded-lg"
-          />
-          {pixCopiaCola && (
-            <div className="rounded bg-black/10 p-2 text-xs font-mono break-all">
-              {pixCopiaCola}
-            </div>
-          )}
-        </div>
-      )}
-
       <button
         type="button"
+        className="btn-finalize"
         onClick={onFinalize}
         disabled={!canFinalize}
-        style={{
-          width: "100%",
-          marginTop: 24,
-          padding: 16,
-          borderRadius: 8,
-          border: "none",
-          background: primary,
-          color: "#fff",
-          fontWeight: 700,
-          fontSize: "1.05rem",
-          cursor: canFinalize ? "pointer" : "not-allowed",
-          opacity: canFinalize ? 1 : 0.6,
-        }}
       >
         {processing
           ? "Processando..."
