@@ -16,12 +16,14 @@ export interface CheckoutData {
       logo_url: string | null;
       banner_url: string | null;
       button_text?: string;
+      banner_message?: string;
       enable_order_bump: boolean;
     };
     gateways: { provider: string }[];
   };
   products: CheckoutProduct[];
   total: number;
+  preview?: boolean;
 }
 
 export interface ShippingAddress {

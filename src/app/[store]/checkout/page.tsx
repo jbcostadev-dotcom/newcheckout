@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { apiGet, apiPost } from "@/lib/api";
 import {
@@ -64,11 +64,14 @@ function CheckoutPageContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const storeSlug = params.store as string;
-  const productsParam = searchParams.get("products") ?? "";
+  const isPreview = searchParams.get("preview") === "1";
+  const productsParam = isPreview ? "1,2" : searchParams.get("products") ?? "";
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<CheckoutData | null>(null);
+  // Overrides applied em tempo real pelo editor do dashboard via postMessage.
+  const [liveSettings, setLiveSettings] = useState<Partial<CheckoutData["store"]["settings"]>>({});
   const [processing, setProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "credit_card">("credit_card");
 
@@ -126,9 +129,10 @@ function CheckoutPageContent() {
     const fetchCheckout = async () => {
       try {
         const domain = getStoreIdentifier();
-        const res = await apiGet<CheckoutData>(
-          `/checkout?domain=${encodeURIComponent(domain)}&product_ids=${encodeURIComponent(productsParam)}`
-        );
+        const endpoint = isPreview
+          ? `/checkout/preview?domain=${encodeURIComponent(domain)}`
+          : `/checkout?domain=${encodeURIComponent(domain)}&product_ids=${encodeURIComponent(productsParam)}`;
+        const res = await apiGet<CheckoutData>(endpoint);
         setData(res);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erro ao carregar checkout.");
@@ -137,7 +141,59 @@ function CheckoutPageContent() {
       }
     };
     fetchCheckout();
-  }, [productsParam, getStoreIdentifier]);
+  }, [productsParam, getStoreIdentifier, isPreview]);
+
+  // Recebe atualizações de personalização em tempo real do editor do dashboard.
+  useEffect(() => {
+    if (!isPreview) return;
+    const handler = (event: MessageEvent) => {
+      if (!event.data || typeof event.data !== "object") return;
+      if (event.data.type !== "checkout:settings") return;
+      setLiveSettings(event.data.settings ?? {});
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [isPreview]);
+
+  // Aplica as settings (persistidas + overrides ao vivo) nas CSS vars do checkout.
+  const effectiveSettings = useMemo(
+    () => ({ ...data?.store.settings, ...liveSettings }),
+    [data?.store.settings, liveSettings]
+  );
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const s = effectiveSettings;
+    if (!s) return;
+
+    if (s.primary_color) {
+      root.style.setProperty("--green-primary", s.primary_color);
+      root.style.setProperty("--green-check", s.primary_color);
+      root.style.setProperty("--border-active", s.primary_color);
+      root.style.setProperty("--input-border-focus", s.primary_color);
+      root.style.setProperty("--badge-green-text", s.primary_color);
+    }
+
+    if (s.dark_mode) {
+      root.style.setProperty("--checkout-bg", "#0a0a1a");
+      root.style.setProperty("--card-bg", "rgba(255,255,255,0.05)");
+      root.style.setProperty("--border-color", "rgba(255,255,255,0.1)");
+      root.style.setProperty("--text-primary", "#ffffff");
+      root.style.setProperty("--text-secondary", "rgba(255,255,255,0.7)");
+      root.style.setProperty("--text-muted", "rgba(255,255,255,0.5)");
+      root.style.setProperty("--input-bg", "rgba(255,255,255,0.05)");
+      root.style.setProperty("--header-banner-bg", "rgba(255,255,255,0.08)");
+    } else {
+      root.style.setProperty("--checkout-bg", "#f5f5f5");
+      root.style.setProperty("--card-bg", "#ffffff");
+      root.style.setProperty("--border-color", "#e0e0e0");
+      root.style.setProperty("--text-primary", "#1a1a1a");
+      root.style.setProperty("--text-secondary", "#666666");
+      root.style.setProperty("--text-muted", "#999999");
+      root.style.setProperty("--input-bg", "#ffffff");
+      root.style.setProperty("--header-banner-bg", "#333333");
+    }
+  }, [effectiveSettings]);
 
   const groupedItems: GroupedItem[] = data
     ? groupProductsByIds(
@@ -172,6 +228,11 @@ function CheckoutPageContent() {
     if (!customerName.trim() || !customerEmail.trim()) {
       alert("Preencha nome e e-mail.");
       setStep("dados");
+      return;
+    }
+
+    if (isPreview) {
+      alert("Modo de visualização: o pagamento não é processado no editor.");
       return;
     }
 
@@ -243,7 +304,7 @@ function CheckoutPageContent() {
   }
 
   const { store } = data;
-  const settings = store.settings || {};
+  const settings = effectiveSettings;
 
   const displayTotal = groupedItems.reduce(
     (sum, g) => sum + Number(g.product.price) * g.qty,
@@ -262,7 +323,7 @@ function CheckoutPageContent() {
           alignItems: "center",
           justifyContent: "space-between",
           padding: "16px 32px",
-          background: "#ffffff",
+          background: "var(--card-bg)",
           borderBottom: "1px solid var(--border-color)",
         }}
       >
@@ -301,7 +362,7 @@ function CheckoutPageContent() {
           fontWeight: 500,
         }}
       >
-        Digite aqui a mensagem
+        {settings.banner_message || "Digite aqui a mensagem"}
       </div>
 
       {/* ─── Order Paid Success ─── */}
@@ -315,7 +376,7 @@ function CheckoutPageContent() {
         }}>
           <div
             style={{
-              background: "#ffffff",
+              background: "var(--card-bg)",
               border: "1px solid var(--border-color)",
               borderRadius: 16,
               padding: 48,
@@ -409,7 +470,7 @@ function CheckoutPageContent() {
           <div style={{ position: "sticky", top: 24, alignSelf: "start" }}>
             <div
               style={{
-                background: "#ffffff",
+                background: "var(--card-bg)",
                 border: "1px solid var(--border-color)",
                 borderRadius: 12,
                 padding: 24,
