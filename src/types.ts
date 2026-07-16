@@ -6,6 +6,16 @@ export interface CheckoutProduct {
   image_url?: string | null;
 }
 
+export interface ShippingMethod {
+  id: number;
+  name: string;
+  price: number | null;
+  min_value_free_shipping: number | null;
+  min_delivery_days: number;
+  max_delivery_days: number;
+  icon: string | null;
+}
+
 export interface CheckoutData {
   store: {
     name: string;
@@ -45,6 +55,7 @@ export interface CheckoutData {
   };
   products: CheckoutProduct[];
   total: number;
+  shipping_methods: ShippingMethod[];
   preview?: boolean;
 }
 

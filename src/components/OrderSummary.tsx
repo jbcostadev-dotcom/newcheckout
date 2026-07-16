@@ -11,6 +11,8 @@ export interface GroupedItem {
 
 interface OrderSummaryProps {
   items: GroupedItem[];
+  subtotal?: number;
+  shipping?: number;
   total: number;
   onQtyChange?: (productId: number, delta: number) => void;
   discount?: number;
@@ -46,6 +48,8 @@ function StarRating({ count }: { count: number }) {
 
 export default function OrderSummary({
   items,
+  subtotal,
+  shipping = 0,
   total,
   onQtyChange,
   discount = 0,
@@ -54,6 +58,7 @@ export default function OrderSummary({
   couponEnabled = true,
 }: OrderSummaryProps) {
   const finalTotal = total - discount;
+  const productTotal = subtotal !== undefined ? subtotal : total - shipping;
 
   return (
     <div>
@@ -72,8 +77,14 @@ export default function OrderSummary({
       <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}>
           <span>Produtos</span>
-          <span>{formatCurrency(total)}</span>
+          <span>{formatCurrency(productTotal)}</span>
         </div>
+        {shipping > 0 && (
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}>
+            <span>Frete</span>
+            <span>{formatCurrency(shipping)}</span>
+          </div>
+        )}
         {showDiscount && discount > 0 && (
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}>
             <span>Descontos</span>

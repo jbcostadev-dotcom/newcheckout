@@ -1,13 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect } from "react";
 import { maskCep } from "@/lib/masks";
 import { lookupCep } from "@/lib/viacep";
-import type { ShippingAddress } from "@/types";
+import { formatCurrency } from "@/lib/utils";
+import type { ShippingAddress, ShippingMethod } from "@/types";
 
 interface StepEntregaProps {
   address: ShippingAddress;
   setAddress: React.Dispatch<React.SetStateAction<ShippingAddress>>;
+  shippingMethods: ShippingMethod[];
+  subtotal: number;
+  selectedShippingMethod: ShippingMethod | null;
+  setSelectedShippingMethod: (method: ShippingMethod | null) => void;
   onContinue: () => void;
   onEdit?: () => void;
   isActive: boolean;
@@ -15,27 +20,54 @@ interface StepEntregaProps {
   titleFontSize?: string;
 }
 
+function formatDeliveryDays(min: number, max: number): string {
+  if (!min && !max) return "";
+  if (min === max) return `${min} dias úteis`;
+  if (!min) return `até ${max} dias úteis`;
+  if (!max) return `${min} dias úteis`;
+  return `${min} a ${max} dias úteis`;
+}
+
 export default function StepEntrega({
   address,
   setAddress,
+  shippingMethods,
+  subtotal,
+  selectedShippingMethod,
+  setSelectedShippingMethod,
   onContinue,
   onEdit,
   isActive,
   isCompleted,
   titleFontSize = "1.25rem",
 }: StepEntregaProps) {
-  const [cepLoading, setCepLoading] = useState(false);
-  const [cepError, setCepError] = useState<string | null>(null);
-  const [cepValidated, setCepValidated] = useState(
+  const [cepLoading, setCepLoading] = React.useState(false);
+  const [cepError, setCepError] = React.useState<string | null>(null);
+  const [cepValidated, setCepValidated] = React.useState(
     Boolean(address.cep && address.logradouro)
   );
-  const [showFields, setShowFields] = useState(
+  const [showFields, setShowFields] = React.useState(
     Boolean(address.cep && address.logradouro)
   );
 
   const cepDigits = address.cep.replace(/\D+/g, "");
   const cepValid = cepDigits.length === 8;
-  const canContinue = cepValid && address.numero.trim().length > 0;
+  const addressComplete = cepValid && address.numero.trim().length > 0;
+
+  // Pré-seleciona o primeiro frete quando a lista chega ou só existe um.
+  useEffect(() => {
+    if (shippingMethods.length === 0) {
+      setSelectedShippingMethod(null);
+      return;
+    }
+
+    if (
+      !selectedShippingMethod ||
+      !shippingMethods.find((m) => m.id === selectedShippingMethod.id)
+    ) {
+      setSelectedShippingMethod(shippingMethods[0]);
+    }
+  }, [shippingMethods, selectedShippingMethod, setSelectedShippingMethod]);
 
   const handleCepChange = (value: string) => {
     const v = maskCep(value);
@@ -71,6 +103,20 @@ export default function StepEntrega({
   const update = (patch: Partial<ShippingAddress>) =>
     setAddress((prev) => ({ ...prev, ...patch }));
 
+  const getShippingPrice = (method: ShippingMethod): number => {
+    if (method.price === null || method.price === undefined) return 0;
+    if (
+      method.min_value_free_shipping !== null &&
+      method.min_value_free_shipping !== undefined &&
+      subtotal >= method.min_value_free_shipping
+    ) {
+      return 0;
+    }
+    return method.price;
+  };
+
+  const isFree = (method: ShippingMethod): boolean => getShippingPrice(method) === 0;
+
   // Completed summary view
   if (isCompleted && !isActive) {
     const fullAddr = [
@@ -99,6 +145,14 @@ export default function StepEntrega({
         <div style={{ marginTop: 8, fontSize: "0.9rem", color: "var(--text-secondary)", lineHeight: 1.6 }}>
           <div>{fullAddr}</div>
           <div>{cityLine}</div>
+          {selectedShippingMethod && (
+            <div style={{ marginTop: 8, fontWeight: 500, color: "var(--text-primary)" }}>
+              {selectedShippingMethod.name} —{" "}
+              {isFree(selectedShippingMethod)
+                ? "Grátis"
+                : formatCurrency(getShippingPrice(selectedShippingMethod))}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -224,21 +278,92 @@ export default function StepEntrega({
         {/* Escolha o frete */}
         <div>
           <h3 style={{ fontSize: "0.95rem", fontWeight: 700, marginBottom: 10 }}>Escolha o frete:</h3>
-          <div
-            style={{
-              background: "var(--checkout-bg)",
-              borderRadius: 8,
-              padding: "20px 16px",
-              textAlign: "center",
-              color: "var(--text-muted)",
-              fontSize: "0.85rem",
-              lineHeight: 1.5,
-            }}
-          >
-            {canContinue
-              ? "Frete Grátis"
-              : "Insira o endereço de entrega para ver as formas de frete disponíveis."}
-          </div>
+
+          {!addressComplete ? (
+            <div
+              style={{
+                background: "var(--checkout-bg)",
+                borderRadius: 8,
+                padding: "20px 16px",
+                textAlign: "center",
+                color: "var(--text-muted)",
+                fontSize: "0.85rem",
+                lineHeight: 1.5,
+              }}
+            >
+              Insira o endereço de entrega para ver as formas de frete disponíveis.
+            </div>
+          ) : shippingMethods.length === 0 ? (
+            <div
+              className="payment-method-card selected"
+              style={{ justifyContent: "space-between" }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <input
+                  type="radio"
+                  className="radio-custom"
+                  checked
+                  readOnly
+                />
+                <span style={{ fontSize: "0.95rem", fontWeight: 600 }}>Frete Grátis</span>
+              </div>
+              <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--green-primary)" }}>
+                Grátis
+              </span>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {shippingMethods.map((method) => {
+                const selected = selectedShippingMethod?.id === method.id;
+                const free = isFree(method);
+                const price = getShippingPrice(method);
+                const days = formatDeliveryDays(method.min_delivery_days, method.max_delivery_days);
+
+                return (
+                  <div
+                    key={method.id}
+                    className={`payment-method-card ${selected ? "selected" : ""}`}
+                    onClick={() => setSelectedShippingMethod(method)}
+                    style={{ justifyContent: "space-between", alignItems: "flex-start" }}
+                  >
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                      <input
+                        type="radio"
+                        className="radio-custom"
+                        checked={selected}
+                        onChange={() => setSelectedShippingMethod(method)}
+                        style={{ marginTop: 3 }}
+                      />
+                      <div>
+                        <div style={{ fontSize: "0.95rem", fontWeight: 600 }}>{method.name}</div>
+                        {days && (
+                          <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: 2 }}>
+                            {days}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      {free ? (
+                        <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--green-primary)" }}>
+                          Grátis
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: "0.95rem", fontWeight: 700 }}>
+                          {formatCurrency(price)}
+                        </span>
+                      )}
+                      {method.min_value_free_shipping !== null && method.min_value_free_shipping !== undefined && !free && (
+                        <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 2 }}>
+                          Grátis acima de {formatCurrency(method.min_value_free_shipping)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -246,7 +371,7 @@ export default function StepEntrega({
         type="button"
         className="btn-primary"
         onClick={onContinue}
-        disabled={!canContinue}
+        disabled={!addressComplete}
       >
         Ir para pagamento
       </button>

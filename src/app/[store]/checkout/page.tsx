@@ -8,6 +8,7 @@ import {
   CheckoutProcessResponse,
   CheckoutProduct,
   ShippingAddress,
+  ShippingMethod,
   CardData,
 } from "@/types";
 import StepDados from "@/components/StepDados";
@@ -89,6 +90,8 @@ function CheckoutPageContent() {
     cidade: "",
     uf: "",
   });
+
+  const [selectedShippingMethod, setSelectedShippingMethod] = useState<ShippingMethod | null>(null);
 
   const [card, setCard] = useState<CardData>({
     number: "",
@@ -229,6 +232,12 @@ function CheckoutPageContent() {
       return;
     }
 
+    if (data?.shipping_methods && data.shipping_methods.length > 0 && !selectedShippingMethod) {
+      alert("Selecione uma forma de frete.");
+      setStep("entrega");
+      return;
+    }
+
     if (isPreview) {
       alert("Modo de visualização: o pagamento não é processado no editor.");
       return;
@@ -249,6 +258,7 @@ function CheckoutPageContent() {
         customer_phone: customerPhone,
         customer_document: customerDocument,
         payment_method: paymentMethod,
+        shipping_method_id: selectedShippingMethod?.id ?? null,
         shipping_address: address,
       });
 
@@ -304,10 +314,30 @@ function CheckoutPageContent() {
   const { store } = data;
   const settings = effectiveSettings;
 
-  const displayTotal = groupedItems.reduce(
+  const subtotal = groupedItems.reduce(
     (sum, g) => sum + Number(g.product.price) * g.qty,
     0
   );
+
+  const shippingPrice = useMemo(() => {
+    if (!selectedShippingMethod) return 0;
+    if (
+      selectedShippingMethod.price === null ||
+      selectedShippingMethod.price === undefined
+    ) {
+      return 0;
+    }
+    if (
+      selectedShippingMethod.min_value_free_shipping !== null &&
+      selectedShippingMethod.min_value_free_shipping !== undefined &&
+      subtotal >= selectedShippingMethod.min_value_free_shipping
+    ) {
+      return 0;
+    }
+    return selectedShippingMethod.price;
+  }, [selectedShippingMethod, subtotal]);
+
+  const displayTotal = subtotal + shippingPrice;
 
   const discountPct = paymentMethod === "pix" ? 1 : 5;
   const discountValue = displayTotal * (discountPct / 100);
@@ -566,6 +596,10 @@ function CheckoutPageContent() {
             <StepEntrega
               address={address}
               setAddress={setAddress}
+              shippingMethods={data?.shipping_methods ?? []}
+              subtotal={subtotal}
+              selectedShippingMethod={selectedShippingMethod}
+              setSelectedShippingMethod={setSelectedShippingMethod}
               onContinue={handleEntregaContinue}
               onEdit={() => handleEditStep("entrega")}
               isActive={step === "entrega"}
@@ -605,6 +639,8 @@ function CheckoutPageContent() {
             >
               <OrderSummary
                 items={groupedItems}
+                subtotal={subtotal}
+                shipping={shippingPrice}
                 total={displayTotal}
                 discount={step === "pagamento" ? discountValue : 0}
                 title={settings.summary_title || "Resumo do pedido"}
