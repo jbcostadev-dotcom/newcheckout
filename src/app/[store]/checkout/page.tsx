@@ -206,6 +206,31 @@ function CheckoutPageContent() {
       )
     : [];
 
+  const subtotal = groupedItems.reduce(
+    (sum, g) => sum + Number(g.product.price) * g.qty,
+    0
+  );
+
+  const shippingPrice = useMemo(() => {
+    if (!selectedShippingMethod) return 0;
+    if (
+      selectedShippingMethod.price === null ||
+      selectedShippingMethod.price === undefined
+    ) {
+      return 0;
+    }
+    if (
+      selectedShippingMethod.min_value_free_shipping !== null &&
+      selectedShippingMethod.min_value_free_shipping !== undefined &&
+      subtotal >= selectedShippingMethod.min_value_free_shipping
+    ) {
+      return 0;
+    }
+    return selectedShippingMethod.price;
+  }, [selectedShippingMethod, subtotal]);
+
+  const displayTotal = subtotal + shippingPrice;
+
   const markCompleted = (s: StepId) => {
     setCompleted((prev) => (prev.includes(s) ? prev : [...prev, s]));
   };
@@ -313,31 +338,6 @@ function CheckoutPageContent() {
 
   const { store } = data;
   const settings = effectiveSettings;
-
-  const subtotal = groupedItems.reduce(
-    (sum, g) => sum + Number(g.product.price) * g.qty,
-    0
-  );
-
-  const shippingPrice = useMemo(() => {
-    if (!selectedShippingMethod) return 0;
-    if (
-      selectedShippingMethod.price === null ||
-      selectedShippingMethod.price === undefined
-    ) {
-      return 0;
-    }
-    if (
-      selectedShippingMethod.min_value_free_shipping !== null &&
-      selectedShippingMethod.min_value_free_shipping !== undefined &&
-      subtotal >= selectedShippingMethod.min_value_free_shipping
-    ) {
-      return 0;
-    }
-    return selectedShippingMethod.price;
-  }, [selectedShippingMethod, subtotal]);
-
-  const displayTotal = subtotal + shippingPrice;
 
   const discountPct = paymentMethod === "pix" ? 1 : 5;
   const discountValue = displayTotal * (discountPct / 100);
