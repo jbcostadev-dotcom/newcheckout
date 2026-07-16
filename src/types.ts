@@ -24,6 +24,24 @@ export interface CheckoutData {
   total: number;
 }
 
+export interface ShippingAddress {
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complemento?: string;
+  bairro: string;
+  cidade: string;
+  uf: string;
+}
+
+export interface CardData {
+  number: string;
+  expiry: string;
+  cvv: string;
+  holder: string;
+  installments: number;
+}
+
 export interface CheckoutProcessResponse {
   order_id?: number;
   status?: string;

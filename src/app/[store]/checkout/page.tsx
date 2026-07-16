@@ -3,16 +3,24 @@
 import { Suspense, useEffect, useState, useCallback } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { apiGet, apiPost } from "@/lib/api";
-import { formatCurrency } from "@/lib/utils";
-import { CheckoutData, CheckoutProcessResponse, CheckoutProduct } from "@/types";
+import {
+  CheckoutData,
+  CheckoutProcessResponse,
+  CheckoutProduct,
+  ShippingAddress,
+  CardData,
+} from "@/types";
+import Stepper, { StepId } from "@/components/Stepper";
+import StepDados from "@/components/StepDados";
+import StepEntrega from "@/components/StepEntrega";
+import StepPagamento from "@/components/StepPagamento";
+import OrderSummary, { GroupedItem } from "@/components/OrderSummary";
+import Footer from "@/components/Footer";
 
-interface GroupedItem {
-  product: CheckoutProduct;
-  qty: number;
-}
-
-function groupProductsByIds(products: CheckoutProduct[], ids: number[]): GroupedItem[] {
-  // IDs repetidos no query string viram quantidade. Agrupa preservando a ordem.
+function groupProductsByIds(
+  products: CheckoutProduct[],
+  ids: number[]
+): GroupedItem[] {
   const seen = new Map<number, GroupedItem>();
   const orderedIds: number[] = [];
 
@@ -54,12 +62,35 @@ function CheckoutPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<CheckoutData | null>(null);
   const [processing, setProcessing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"pix" | "credit_card">("pix");
+  const [paymentMethod, setPaymentMethod] = useState<"pix" | "credit_card">(
+    "pix"
+  );
 
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerDocument, setCustomerDocument] = useState("");
+
+  const [address, setAddress] = useState<ShippingAddress>({
+    cep: "",
+    logradouro: "",
+    numero: "",
+    complemento: "",
+    bairro: "",
+    cidade: "",
+    uf: "",
+  });
+
+  const [card, setCard] = useState<CardData>({
+    number: "",
+    expiry: "",
+    cvv: "",
+    holder: "",
+    installments: 1,
+  });
+
+  const [step, setStep] = useState<StepId>("dados");
+  const [completed, setCompleted] = useState<StepId[]>([]);
 
   const [pixQrCode, setPixQrCode] = useState<string | null>(null);
   const [pixCopiaCola, setPixCopiaCola] = useState<string | null>(null);
@@ -101,8 +132,6 @@ function CheckoutPageContent() {
     fetchCheckout();
   }, [productsParam, getStoreIdentifier]);
 
-  // Lista de IDs (preserva repetições) derivada da resposta — garante que
-  // só enviamos de volta IDs que o backend confirmou como ativos.
   const groupedItems: GroupedItem[] = data
     ? groupProductsByIds(
         data.products,
@@ -113,10 +142,31 @@ function CheckoutPageContent() {
       )
     : [];
 
+  const goToStep = (s: StepId) => setStep(s);
+
+  const markCompleted = (s: StepId) => {
+    setCompleted((prev) => (prev.includes(s) ? prev : [...prev, s]));
+  };
+
+  const handleDadosContinue = () => {
+    markCompleted("dados");
+    setStep("entrega");
+  };
+
+  const handleEntregaContinue = () => {
+    markCompleted("entrega");
+    setStep("pagamento");
+  };
+
+  const handleJump = (s: StepId) => {
+    if (completed.includes(s) || s === step) setStep(s);
+  };
+
   const handlePayment = async () => {
     if (!data || groupedItems.length === 0) return;
     if (!customerName.trim() || !customerEmail.trim()) {
       alert("Preencha nome e e-mail.");
+      setStep("dados");
       return;
     }
 
@@ -135,6 +185,7 @@ function CheckoutPageContent() {
         customer_phone: customerPhone,
         customer_document: customerDocument,
         payment_method: paymentMethod,
+        shipping_address: address,
       });
 
       if (res.status === "paid") {
@@ -142,6 +193,7 @@ function CheckoutPageContent() {
       } else if (res.pix_qrcode) {
         setPixQrCode(res.pix_qrcode);
         setPixCopiaCola(res.pix_copia_cola ?? "");
+        markCompleted("pagamento");
       }
     } catch (err) {
       alert(err instanceof Error ? err.message : "Erro ao processar pagamento.");
@@ -267,217 +319,96 @@ function CheckoutPageContent() {
               className="rounded-xl p-8"
               style={{ background: cardBg, border: `1px solid ${borderColor}` }}
             >
-              <h2 className="mb-6 text-lg font-bold">1. Dados de Contato</h2>
-              <div className="space-y-3">
-                <input
-                  type="text"
-                  placeholder="Nome Completo *"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  style={inputStyle}
-                />
-                <input
-                  type="email"
-                  placeholder="E-mail *"
-                  value={customerEmail}
-                  onChange={(e) => setCustomerEmail(e.target.value)}
-                  style={inputStyle}
-                />
-                <input
-                  type="tel"
-                  placeholder="WhatsApp"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  style={inputStyle}
-                />
-                <input
-                  type="text"
-                  placeholder="CPF (opcional)"
-                  value={customerDocument}
-                  onChange={(e) => setCustomerDocument(e.target.value)}
-                  style={inputStyle}
-                />
-              </div>
+              <Stepper
+                current={step}
+                completed={completed}
+                onJump={handleJump}
+                primary={primary}
+                textColor={textColor}
+                mutedText={mutedText}
+                borderColor={borderColor}
+              />
 
-              <h2 className="mb-4 mt-8 text-lg font-bold">2. Pagamento</h2>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setPaymentMethod("pix");
-                    setPixQrCode(null);
-                    setPixCopiaCola(null);
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: "14px",
-                    borderRadius: 8,
-                    border: `2px solid ${
-                      paymentMethod === "pix" ? primary : borderColor
-                    }`,
-                    background: paymentMethod === "pix" ? primary : "transparent",
-                    color: paymentMethod === "pix" ? "#fff" : textColor,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    fontSize: "0.95rem",
-                  }}
-                >
-                  📱 PIX
-                </button>
-                <button
-                  onClick={() => {
-                    setPaymentMethod("credit_card");
-                    setPixQrCode(null);
-                    setPixCopiaCola(null);
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: "14px",
-                    borderRadius: 8,
-                    border: `2px solid ${
-                      paymentMethod === "credit_card" ? primary : borderColor
-                    }`,
-                    background:
-                      paymentMethod === "credit_card" ? primary : "transparent",
-                    color: paymentMethod === "credit_card" ? "#fff" : textColor,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    fontSize: "0.95rem",
-                  }}
-                >
-                  💳 Cartão
-                </button>
-              </div>
-
-              {pixQrCode && (
-                <div
-                  className="mt-6 rounded-lg p-4"
-                  style={{ background: inputBg }}
-                >
-                  <p className="mb-3 text-sm font-medium">QR Code PIX</p>
-                  <img
-                    src={pixQrCode}
-                    alt="QR Code PIX"
-                    className="mx-auto mb-3 h-48 w-48 rounded-lg"
-                  />
-                  {pixCopiaCola && (
-                    <div className="rounded bg-black/10 p-2 text-xs font-mono break-all">
-                      {pixCopiaCola}
-                    </div>
-                  )}
-                </div>
+              {step === "dados" && (
+                <StepDados
+                  name={customerName}
+                  email={customerEmail}
+                  phone={customerPhone}
+                  document={customerDocument}
+                  setName={setCustomerName}
+                  setEmail={setCustomerEmail}
+                  setPhone={setCustomerPhone}
+                  setDocument={setCustomerDocument}
+                  onContinue={handleDadosContinue}
+                  primary={primary}
+                  textColor={textColor}
+                  mutedText={mutedText}
+                  inputStyle={inputStyle}
+                  borderColor={borderColor}
+                />
               )}
 
-              <button
-                onClick={handlePayment}
-                disabled={processing || !!pixQrCode}
-                style={{
-                  width: "100%",
-                  marginTop: 24,
-                  padding: "16px",
-                  borderRadius: 8,
-                  border: "none",
-                  background: primary,
-                  color: "#fff",
-                  fontWeight: 700,
-                  fontSize: "1.05rem",
-                  cursor: processing || pixQrCode ? "not-allowed" : "pointer",
-                  opacity: processing || pixQrCode ? 0.7 : 1,
-                }}
-              >
-                {processing
-                  ? "Processando..."
-                  : pixQrCode
-                    ? "Aguardando pagamento..."
-                    : (settings.button_text || "Finalizar Compra")}
-              </button>
+              {step === "entrega" && (
+                <StepEntrega
+                  address={address}
+                  setAddress={setAddress}
+                  onContinue={handleEntregaContinue}
+                  primary={primary}
+                  textColor={textColor}
+                  mutedText={mutedText}
+                  inputStyle={inputStyle}
+                  borderColor={borderColor}
+                />
+              )}
+
+              {step === "pagamento" && (
+                <StepPagamento
+                  paymentMethod={paymentMethod}
+                  setPaymentMethod={setPaymentMethod}
+                  card={card}
+                  setCard={setCard}
+                  onFinalize={handlePayment}
+                  processing={processing}
+                  awaitingPix={Boolean(pixQrCode)}
+                  pixQrCode={pixQrCode}
+                  pixCopiaCola={pixCopiaCola}
+                  primary={primary}
+                  textColor={textColor}
+                  inputStyle={inputStyle}
+                  borderColor={borderColor}
+                  inputBg={inputBg}
+                  buttonText={settings.button_text || "Finalizar Compra"}
+                />
+              )}
             </div>
           </div>
 
           <div className="w-full md:w-[340px]">
             <div
-              className="rounded-xl p-8"
-              style={{ background: cardBg, border: `1px solid ${borderColor}` }}
+              className="sticky top-4 rounded-xl p-8"
+              style={{
+                background: cardBg,
+                border: `1px solid ${borderColor}`,
+              }}
             >
-              <h2 className="mb-6 text-lg font-bold">Resumo do Pedido</h2>
-
-              <div className="space-y-3">
-                {groupedItems.map((g) => (
-                  <div
-                    key={g.product.id}
-                    className="flex items-center gap-3 pb-3"
-                    style={{ borderBottom: `1px solid ${borderColor}` }}
-                  >
-                    {g.product.image_url ? (
-                      <img
-                        src={g.product.image_url}
-                        alt={g.product.name}
-                        className="h-12 w-12 rounded-lg object-cover"
-                      />
-                    ) : (
-                      <div
-                        className="flex h-12 w-12 items-center justify-center rounded-lg"
-                        style={{ background: inputBg }}
-                      >
-                        <svg
-                          className="h-5 w-5"
-                          style={{ color: mutedText }}
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-                          />
-                        </svg>
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <h3 className="text-sm font-semibold">{g.product.name}</h3>
-                      <p style={{ color: mutedText }} className="text-xs">
-                        {g.qty > 1 ? `${g.qty}× ` : ""}
-                        {formatCurrency(Number(g.product.price))}
-                      </p>
-                    </div>
-                    <span className="text-sm font-medium">
-                      {formatCurrency(Number(g.product.price) * g.qty)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-4 space-y-2" style={{ color: mutedText }}>
-                <div className="flex justify-between text-sm">
-                  <span>Subtotal</span>
-                  <span>{formatCurrency(displayTotal)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Frete</span>
-                  <span>Grátis</span>
-                </div>
-              </div>
-              <div
-                className="mt-4 flex justify-between text-lg font-bold"
-                style={{ borderTop: `1px solid ${borderColor}`, paddingTop: 16 }}
-              >
-                <span>Total</span>
-                <span style={{ color: primary }}>
-                  {formatCurrency(displayTotal)}
-                </span>
-              </div>
+              <OrderSummary
+                items={groupedItems}
+                total={displayTotal}
+                primary={primary}
+                mutedText={mutedText}
+                borderColor={borderColor}
+                inputBg={inputBg}
+              />
             </div>
           </div>
         </main>
       )}
 
-      <footer
-        className="px-6 py-3 text-center text-xs"
-        style={{ color: mutedText, background: cardBg }}
-      >
-        Checkout PRO — Pagamento seguro
-      </footer>
+      <Footer
+        mutedText={mutedText}
+        cardBg={cardBg}
+        borderColor={borderColor}
+      />
     </div>
   );
 }
