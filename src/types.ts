@@ -51,7 +51,8 @@ export interface CheckoutData {
       font_family?: string;
       font_size_base?: string;
     };
-    gateways: { provider: string }[];
+    // Para a Unipay, public_key = pk_live_* usada no SDK client-side.
+    gateways: { provider: string; public_key?: string | null }[];
   };
   products: CheckoutProduct[];
   total: number;
@@ -82,16 +83,33 @@ export interface CheckoutProcessResponse {
   order_id?: number;
   status?: string;
   message?: string;
+  payment_method?: string;
+  gateway_transaction_id?: string | null;
   pix_qrcode?: string;
   pix_copia_cola?: string;
+  boleto_url?: string | null;
+  boleto_barcode?: string | null;
+  boleto_digitable_line?: string | null;
+  card_brand?: string | null;
+  card_last4?: string | null;
+  installments?: number;
+  gateway_expires_at?: string | null;
 }
 
 export interface PixStatusResponse {
   order_id: number;
-  status: "pending" | "paid" | "failed" | "expired" | string;
+  status: "pending" | "processing" | "waiting_payment" | "in_analysis" | "authorized" | "paid" | "failed" | "refused" | "canceled" | "refunded" | "in_protest" | "chargedback" | string;
+  payment_method?: string;
   pix_qrcode?: string | null;
   pix_copia_cola?: string | null;
+  boleto_url?: string | null;
+  boleto_barcode?: string | null;
+  boleto_digitable_line?: string | null;
+  card_brand?: string | null;
+  card_last4?: string | null;
+  installments?: number;
   total: number;
+  gateway_expires_at?: string | null;
   created_at?: string | null;
   store_name?: string | null;
 }

@@ -21,6 +21,7 @@ interface PixPaymentViewProps {
   total: number;
   copiaECola: string;
   createdAt?: string | Date | null;
+  expiresAt?: string | Date | null;
   isPreview?: boolean;
   initialSettings?: PixPaymentSettings;
   onBackToCheckout?: () => void;
@@ -31,6 +32,7 @@ export default function PixPaymentView({
   total,
   copiaECola,
   createdAt,
+  expiresAt,
   isPreview = false,
   initialSettings = {},
   onBackToCheckout,
@@ -119,11 +121,14 @@ export default function PixPaymentView({
   useEffect(() => {
     if (!createdAt) return;
 
-    const expiresAt = new Date(createdAt).getTime() + PIX_EXPIRATION_MINUTES * 60 * 1000;
+    // Prioriza a expiração retornada pela gateway (Unipay/FastSoft); senão usa o padrão.
+    const expiresAtMs = expiresAt
+      ? new Date(expiresAt).getTime()
+      : new Date(createdAt).getTime() + PIX_EXPIRATION_MINUTES * 60 * 1000;
 
     const updateTimer = () => {
       const now = Date.now();
-      const diff = Math.max(0, expiresAt - now);
+      const diff = Math.max(0, expiresAtMs - now);
       setTimeLeft(diff);
       setTimerReady(true);
 
@@ -138,7 +143,7 @@ export default function PixPaymentView({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [createdAt]);
+  }, [createdAt, expiresAt]);
 
   const formatTime = (ms: number) => {
     const totalSeconds = Math.floor(ms / 1000);

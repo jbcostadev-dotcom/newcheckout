@@ -53,8 +53,10 @@ function PixPageContent() {
       const res = await apiGet<PixStatusResponse>(`/checkout/order/${orderId}/pix`);
       setData(res);
 
-      if (res.status === "paid") {
+      if (res.status === "paid" || res.status === "authorized") {
         router.push(`/${storeSlug}/pix/success`);
+      } else if (res.status === "refused" || res.status === "canceled" || res.status === "failed") {
+        setError("O pagamento foi recusado ou cancelado.");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao carregar pagamento.");
@@ -110,6 +112,7 @@ function PixPageContent() {
       total={data.total}
       copiaECola={data.pix_copia_cola ?? ""}
       createdAt={data.created_at}
+      expiresAt={data.gateway_expires_at}
       initialSettings={settings}
     />
   );

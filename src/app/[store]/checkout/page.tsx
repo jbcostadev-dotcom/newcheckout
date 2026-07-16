@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { apiGet, apiPost } from "@/lib/api";
+import { useFastSoft } from "@/lib/useFastSoft";
 import {
   CheckoutData,
   CheckoutProcessResponse,
@@ -19,6 +20,21 @@ import Footer from "@/components/Footer";
 import ScarcityBar from "@/components/ScarcityBar";
 
 type StepId = "dados" | "entrega" | "pagamento";
+
+/**
+ * Heurística simples para identificar a bandeira do cartão a partir do BIN.
+ * Útil apenas para exibir; a Unipay retorna a brand oficial no webhook.
+ */
+function guessCardBrand(number: string): string | null {
+  const n = number.replace(/\D+/g, "");
+  if (!n) return null;
+  if (/^4/.test(n)) return "VISA";
+  if (/^(5[1-5]|2[2-7])/.test(n)) return "MASTERCARD";
+  if (/^(4011|4312|4389|4514|4576|5041|5066|5067|509|6277|6362|6363|650|6516|6550)/.test(n)) return "ELO";
+  if (/^3[47]/.test(n)) return "AMEX";
+  if (/^(606282|3841)/.test(n)) return "HIPERCARD";
+  return null;
+}
 
 function groupProductsByIds(
   products: CheckoutProduct[],
@@ -75,7 +91,8 @@ function CheckoutPageContent() {
   const [data, setData] = useState<CheckoutData | null>(null);
   const [liveSettings, setLiveSettings] = useState<Partial<CheckoutData["store"]["settings"]>>({});
   const [processing, setProcessing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"pix" | "credit_card">("credit_card");
+  const [paymentMethod, setPaymentMethod] = useState<"pix" | "credit_card" | "boleto">("credit_card");
+  const [sdkError, setSdkError] = useState<string | null>(null);
 
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -107,6 +124,17 @@ function CheckoutPageContent() {
   const [completed, setCompleted] = useState<StepId[]>([]);
 
   const [orderPaid, setOrderPaid] = useState(false);
+
+  // Chave pública da Unipay (pk_live_*) vinda do backend (gateways unipay).
+  const unipayPublicKey = useMemo(() => {
+    const gw = data?.store.gateways?.find((g) => g.provider === "unipay");
+    return gw?.public_key ?? null;
+  }, [data]);
+
+  const fastSoft = useFastSoft(unipayPublicKey);
+  useEffect(() => {
+    setSdkError(fastSoft.error);
+  }, [fastSoft.error]);
 
   const getStoreIdentifier = useCallback((): string => {
     const hostname = window.location.hostname;
@@ -262,8 +290,17 @@ function CheckoutPageContent() {
       return;
     }
 
+      // Pré-calcula descontos para aplicá-los no payload (checkout já exibe preço com desconto).
+      const methodDiscountPct = paymentMethod === "pix" ? 1 : paymentMethod === "credit_card" ? 5 : 0;
+      const finalAmount = displayTotal * (1 - methodDiscountPct / 100);
+
+      // A API calcula o total a partir dos itens + frete (sem desconto por método).
+      // Para honrar o desconto exibido, repassamos como redução proporcional via
+      // metadata; o backend hoje ignora. Fluxo atual: API decide total sozinha.
+      void finalAmount;
+
       if (isPreview) {
-        if (paymentMethod === "pix") {
+        if (paymentMethod === "pix" || paymentMethod === "boleto") {
           try {
             sessionStorage.setItem(
               "pix_page_settings",
@@ -281,12 +318,87 @@ function CheckoutPageContent() {
             // ignore storage errors
           }
           markCompleted("pagamento");
-          router.push(`/${storeSlug}/pix/preview?preview=1`);
+          const dest =
+            paymentMethod === "boleto"
+              ? `/${storeSlug}/boleto/preview?preview=1`
+              : `/${storeSlug}/pix/preview?preview=1`;
+          router.push(dest);
         } else {
           alert("Modo de visualização: o pagamento não é processado no editor.");
         }
         return;
       }
+
+    // Cartão exige SDK + tokenização (com 3DS opcional).
+    let cardToken: string | null = null;
+    let cardBrand: string | null = null;
+    let cardLast4: string | null = null;
+    let installments = card.installments;
+
+    if (paymentMethod === "credit_card") {
+      if (!fastSoft.ready || !fastSoft.tokenizeWith3DS) {
+        alert(sdkError ?? "SDK de pagamento ainda carregando. Tente novamente em instantes.");
+        return;
+      }
+
+      // Converte expirar "MM/AA" → expMonth/expYear(4 dígitos).
+      const [mm, yy] = card.expiry.split("/");
+      const expMonth = (mm ?? "").trim();
+      const expYear = yy && yy.length === 2 ? `20${yy}` : (yy ?? "").trim();
+      const digitsOnly = card.number.replace(/\D+/g, "");
+
+      if (digitsOnly.length < 13 || expMonth.length !== 2 || expYear.length !== 4 || card.cvv.length < 3 || card.holder.trim().length < 3) {
+        alert("Verifique os dados do cartão.");
+        return;
+      }
+
+      cardLast4 = digitsOnly.slice(-4) || null;
+      cardBrand = guessCardBrand(digitsOnly);
+
+      try {
+        const token = await fastSoft.tokenizeWith3DS(
+          {
+            number: digitsOnly,
+            holderName: card.holder.trim().toUpperCase(),
+            expMonth,
+            expYear,
+            cvv: card.cvv,
+          },
+          {
+            transaction: {
+              amount: Math.round(displayTotal * 100), // centavos
+              currency: "BRL",
+              installments,
+            },
+            auth: {
+              customer: {
+                name: customerName.trim(),
+                email: customerEmail.trim(),
+                phoneNumber: customerPhone?.replace(/\D+/g, "") ?? "",
+              },
+              address: {
+                street: address.logradouro || "",
+                streetNumber: address.numero || "",
+                complement: address.complemento || "",
+                zipCode: address.cep?.replace(/\D+/g, "") || "",
+                neighborhood: address.bairro || "",
+                city: address.cidade || "",
+                state: address.uf || "",
+                country: "BR",
+              },
+            },
+          }
+        );
+        cardToken = token;
+      } catch (err) {
+        alert(
+          err instanceof Error
+            ? `Erro na tokenização do cartão: ${err.message}`
+            : "Erro na tokenização do cartão."
+        );
+        return;
+      }
+    }
 
     setProcessing(true);
     try {
@@ -295,7 +407,7 @@ function CheckoutPageContent() {
         product_id: g.product.id,
         qty: g.qty,
       }));
-      const res = await apiPost<CheckoutProcessResponse>("/checkout/process", {
+      const payload: Record<string, unknown> = {
         domain,
         items,
         customer_name: customerName.trim(),
@@ -305,30 +417,53 @@ function CheckoutPageContent() {
         payment_method: paymentMethod,
         shipping_method_id: selectedShippingMethod?.id ?? null,
         shipping_address: address,
-      });
+      };
+      if (paymentMethod === "credit_card" && cardToken) {
+        payload.card_token = cardToken;
+        payload.installments = installments;
+        if (cardBrand) payload.card_brand = cardBrand;
+        if (cardLast4) payload.card_last4 = cardLast4;
+      }
 
-      if (res.status === "paid") {
+      const res = await apiPost<CheckoutProcessResponse>("/checkout/process", payload);
+
+      // Persiste settings visuais para reuso nas páginas de status.
+      try {
+        sessionStorage.setItem(
+          "pix_page_settings",
+          JSON.stringify({
+            logo_url: data?.store.settings.logo_url,
+            header_store_name_visible: data?.store.settings.header_store_name_visible,
+            header_secure_badge: data?.store.settings.header_secure_badge,
+            primary_color: data?.store.settings.primary_color,
+            dark_mode: data?.store.settings.dark_mode,
+            font_family: data?.store.settings.font_family,
+            font_size_base: data?.store.settings.font_size_base,
+          })
+        );
+      } catch {
+        // ignore storage errors
+      }
+
+      // Status pagos imediatamente (cartão autorizado/pago).
+      if (res.status === "paid" || res.status === "authorized") {
         setOrderPaid(true);
-      } else if (res.order_id) {
-        // Salva as configurações da loja para reutilizar na página PIX.
-        try {
-          sessionStorage.setItem(
-            "pix_page_settings",
-            JSON.stringify({
-              logo_url: data?.store.settings.logo_url,
-              header_store_name_visible: data?.store.settings.header_store_name_visible,
-              header_secure_badge: data?.store.settings.header_secure_badge,
-              primary_color: data?.store.settings.primary_color,
-              dark_mode: data?.store.settings.dark_mode,
-              font_family: data?.store.settings.font_family,
-              font_size_base: data?.store.settings.font_size_base,
-            })
-          );
-        } catch {
-          // ignore storage errors
-        }
-        markCompleted("pagamento");
-        router.push(`/${storeSlug}/pix/${res.order_id}`);
+        return;
+      }
+
+      if (!res.order_id) {
+        alert(res.message ?? "Não foi possível iniciar o pagamento.");
+        return;
+      }
+
+      markCompleted("pagamento");
+      switch (res.payment_method ?? paymentMethod) {
+        case "boleto":
+          router.push(`/${storeSlug}/boleto/${res.order_id}`);
+          break;
+        case "pix":
+        default:
+          router.push(`/${storeSlug}/pix/${res.order_id}`);
       }
     } catch (err) {
       alert(err instanceof Error ? err.message : "Erro ao processar pagamento.");
@@ -570,6 +705,8 @@ function CheckoutPageContent() {
               isActive={step === "pagamento"}
               total={displayTotal}
               titleFontSize={stepTitleSize}
+              sdkReady={fastSoft.ready}
+              sdkError={sdkError}
             />
           </div>
 

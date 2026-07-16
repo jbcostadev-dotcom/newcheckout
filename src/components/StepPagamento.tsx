@@ -6,8 +6,8 @@ import { formatCurrency } from "@/lib/utils";
 import type { CardData } from "@/types";
 
 interface StepPagamentoProps {
-  paymentMethod: "pix" | "credit_card";
-  setPaymentMethod: (v: "pix" | "credit_card") => void;
+  paymentMethod: "pix" | "credit_card" | "boleto";
+  setPaymentMethod: (v: "pix" | "credit_card" | "boleto") => void;
   card: CardData;
   setCard: React.Dispatch<React.SetStateAction<CardData>>;
   onFinalize: () => void;
@@ -20,7 +20,10 @@ interface StepPagamentoProps {
   total: number;
   pixDiscount?: number;
   cardDiscount?: number;
+  boletoDiscount?: number;
   titleFontSize?: string;
+  sdkReady?: boolean;
+  sdkError?: string | null;
 }
 
 export default function StepPagamento({
@@ -38,7 +41,10 @@ export default function StepPagamento({
   total,
   pixDiscount = 1,
   cardDiscount = 5,
+  boletoDiscount = 0,
   titleFontSize = "1.25rem",
+  sdkReady = true,
+  sdkError = null,
 }: StepPagamentoProps) {
   const cardValid =
     card.number.replace(/\D+/g, "").length >= 13 &&
@@ -46,10 +52,16 @@ export default function StepPagamento({
     card.cvv.length >= 3 &&
     card.holder.trim().length >= 3;
 
-  const canFinalize =
-    !processing && !awaitingPix && (paymentMethod === "pix" || cardValid);
+  const sdkBlocked = paymentMethod === "credit_card" && !sdkReady;
 
-  const discountPct = paymentMethod === "pix" ? pixDiscount : cardDiscount;
+  const canFinalize =
+    !processing &&
+    !awaitingPix &&
+    !sdkBlocked &&
+    (paymentMethod === "pix" || paymentMethod === "boleto" || cardValid);
+
+  const discountPct =
+    paymentMethod === "pix" ? pixDiscount : paymentMethod === "credit_card" ? cardDiscount : boletoDiscount;
   const discountedTotal = total * (1 - discountPct / 100);
 
   // Inactive state
@@ -224,6 +236,51 @@ export default function StepPagamento({
             <p style={{ marginTop: 8 }}>
               Valor no Pix: <strong>{formatCurrency(discountedTotal)}</strong>
             </p>
+          </div>
+        )}
+
+        {/* Boleto Option */}
+        <div
+          className={`payment-method-card ${paymentMethod === "boleto" ? "selected" : ""}`}
+          onClick={() => setPaymentMethod("boleto")}
+        >
+          {boletoDiscount > 0 && (
+            <span className="payment-method-badge">{boletoDiscount}% DE DESCONTO</span>
+          )}
+          <input
+            type="radio"
+            className="radio-custom"
+            checked={paymentMethod === "boleto"}
+            onChange={() => setPaymentMethod("boleto")}
+          />
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-secondary)" }}>
+            <path d="M4 4h16v16H4z" />
+            <path d="M8 8v8" />
+            <path d="M12 8v8" />
+            <path d="M16 8v8" />
+          </svg>
+          <span style={{ fontSize: "0.95rem", fontWeight: 500 }}>Boleto bancário</span>
+        </div>
+
+        {/* Boleto info (shown when boleto selected) */}
+        {paymentMethod === "boleto" && (
+          <div style={{ padding: "8px 0", fontSize: "0.88rem", color: "var(--text-secondary)", lineHeight: 1.6 }}>
+            <p>O boleto vence em 3 dias e pode levar até 2 dias úteis para compensar.</p>
+            <p style={{ marginTop: 8 }}>
+              Valor no Boleto: <strong>{formatCurrency(discountedTotal)}</strong>
+            </p>
+          </div>
+        )}
+
+        {/* SDK status warning (cartão) */}
+        {paymentMethod === "credit_card" && sdkError && (
+          <div style={{ padding: "8px 12px", marginTop: 4, fontSize: "0.82rem", color: "#b91c1c", background: "rgba(185,28,28,0.08)", borderRadius: 6 }}>
+            {sdkError}
+          </div>
+        )}
+        {paymentMethod === "credit_card" && !sdkReady && !sdkError && (
+          <div style={{ padding: "8px 12px", marginTop: 4, fontSize: "0.82rem", color: "var(--text-secondary)", background: "var(--card-bg)", borderRadius: 6 }}>
+            Carregando módulo seguro de cartão…
           </div>
         )}
 
