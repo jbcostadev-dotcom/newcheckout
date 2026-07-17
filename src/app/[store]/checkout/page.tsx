@@ -775,9 +775,12 @@ function CheckoutPageContent() {
             grid-template-columns: 1fr !important;
             padding: 16px !important;
             gap: 16px !important;
+            display: flex !important;
+            flex-direction: column !important;
           }
           .checkout-main > div:last-child {
             position: static !important;
+            order: -1 !important;
           }
         }
       `}</style>
