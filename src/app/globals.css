@@ -359,3 +359,94 @@ body {
 .checkout-select:focus {
   border-color: var(--input-border-focus);
 }
+
+/* ─── Mobile Step Progress Bar ─── */
+.mobile-step-progress {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-step-progress {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 24px 4px;
+    gap: 0;
+  }
+
+  .mobile-step-progress-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+    flex-shrink: 0;
+  }
+
+  .mobile-step-progress-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: 2px solid var(--border-color);
+    background: var(--card-bg);
+    color: var(--text-muted);
+    transition: all 0.3s ease;
+  }
+
+  .mobile-step-progress-item.active .mobile-step-progress-circle {
+    border-color: var(--text-primary);
+    background: var(--text-primary);
+    color: var(--card-bg);
+    box-shadow: 0 0 0 4px rgba(0,0,0,0.06);
+  }
+
+  .mobile-step-progress-item.completed .mobile-step-progress-circle {
+    border-color: var(--green-primary);
+    background: var(--green-primary);
+    color: #ffffff;
+  }
+
+  .mobile-step-progress-label {
+    font-size: 0.7rem;
+    font-weight: 500;
+    margin-top: 6px;
+    color: var(--text-muted);
+    text-align: center;
+    white-space: nowrap;
+    transition: color 0.3s ease;
+  }
+
+  .mobile-step-progress-item.active .mobile-step-progress-label {
+    color: var(--text-primary);
+    font-weight: 700;
+  }
+
+  .mobile-step-progress-item.completed .mobile-step-progress-label {
+    color: var(--green-primary);
+    font-weight: 600;
+  }
+
+  .mobile-step-progress-line {
+    flex: 1;
+    height: 2px;
+    background: var(--border-color);
+    margin: 0 4px;
+    margin-bottom: 22px;
+    min-width: 40px;
+    transition: background 0.3s ease;
+  }
+
+  .mobile-step-progress-line.filled {
+    background: var(--green-primary);
+  }
+
+  /* Hide inactive (not-yet-reached) step cards on mobile */
+  .step-card-mobile-hidden {
+    display: none !important;
+  }
+}

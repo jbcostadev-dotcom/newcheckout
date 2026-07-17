@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState, useCallback, useMemo } from "react";
+import React, { Suspense, useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { apiGet, apiPost } from "@/lib/api";
 import { useFastSoft } from "@/lib/useFastSoft";
@@ -527,6 +527,23 @@ function CheckoutPageContent() {
   const logoAlign = settings.header_logo_alignment || "left";
   const iconColor = settings.header_icon_color || "var(--text-secondary)";
 
+  // ─── Mobile step progress helpers ───
+  const steps: { id: StepId; label: string; num: number }[] = [
+    { id: "dados", label: "Identificação", num: 1 },
+    { id: "entrega", label: "Entrega", num: 2 },
+    { id: "pagamento", label: "Pagamento", num: 3 },
+  ];
+
+  const getStepState = (id: StepId) => {
+    if (step === id) return "active";
+    if (completed.includes(id)) return "completed";
+    return "";
+  };
+
+  /** On mobile, hide steps that are not active AND not completed */
+  const mobileHidden = (id: StepId) =>
+    step !== id && !completed.includes(id) ? "step-card-mobile-hidden" : "";
+
   const LogoContent = (
     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
       {settings.logo_url && (
@@ -680,7 +697,41 @@ function CheckoutPageContent() {
           </div>
         </div>
       ) : (
-        /* ─── Main 3-Column Layout ─── */
+        <>
+        {/* ─── Mobile Step Progress Bar ─── */}
+        <div className="mobile-step-progress">
+          {steps.map((s, i) => (
+            <React.Fragment key={s.id}>
+              <div
+                className={`mobile-step-progress-item ${getStepState(s.id)}`}
+                onClick={() => {
+                  if (completed.includes(s.id) || step === s.id) handleEditStep(s.id);
+                }}
+                style={{ cursor: completed.includes(s.id) ? "pointer" : "default" }}
+              >
+                <div className="mobile-step-progress-circle">
+                  {completed.includes(s.id) && step !== s.id ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    s.num
+                  )}
+                </div>
+                <span className="mobile-step-progress-label">{s.label}</span>
+              </div>
+              {i < steps.length - 1 && (
+                <div
+                  className={`mobile-step-progress-line ${
+                    completed.includes(s.id) ? "filled" : ""
+                  }`}
+                />
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+
+        {/* ─── Main 3-Column Layout ─── */}
         <main
           style={{
             display: "grid",
@@ -696,39 +747,43 @@ function CheckoutPageContent() {
         >
           {/* ─── Column 1: Identificação + Entrega ─── */}
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            <StepDados
-              name={customerName}
-              email={customerEmail}
-              phone={customerPhone}
-              document={customerDocument}
-              setName={setCustomerName}
-              setEmail={setCustomerEmail}
-              setPhone={setCustomerPhone}
-              setDocument={setCustomerDocument}
-              onContinue={handleDadosContinue}
-              onEdit={() => handleEditStep("dados")}
-              isActive={step === "dados"}
-              isCompleted={completed.includes("dados")}
-              titleFontSize={stepTitleSize}
-            />
+            <div className={mobileHidden("dados")}>
+              <StepDados
+                name={customerName}
+                email={customerEmail}
+                phone={customerPhone}
+                document={customerDocument}
+                setName={setCustomerName}
+                setEmail={setCustomerEmail}
+                setPhone={setCustomerPhone}
+                setDocument={setCustomerDocument}
+                onContinue={handleDadosContinue}
+                onEdit={() => handleEditStep("dados")}
+                isActive={step === "dados"}
+                isCompleted={completed.includes("dados")}
+                titleFontSize={stepTitleSize}
+              />
+            </div>
 
-            <StepEntrega
-              address={address}
-              setAddress={setAddress}
-              shippingMethods={data?.shipping_methods ?? []}
-              subtotal={subtotal}
-              selectedShippingMethod={selectedShippingMethod}
-              setSelectedShippingMethod={setSelectedShippingMethod}
-              onContinue={handleEntregaContinue}
-              onEdit={() => handleEditStep("entrega")}
-              isActive={step === "entrega"}
-              isCompleted={completed.includes("entrega")}
-              titleFontSize={stepTitleSize}
-            />
+            <div className={mobileHidden("entrega")}>
+              <StepEntrega
+                address={address}
+                setAddress={setAddress}
+                shippingMethods={data?.shipping_methods ?? []}
+                subtotal={subtotal}
+                selectedShippingMethod={selectedShippingMethod}
+                setSelectedShippingMethod={setSelectedShippingMethod}
+                onContinue={handleEntregaContinue}
+                onEdit={() => handleEditStep("entrega")}
+                isActive={step === "entrega"}
+                isCompleted={completed.includes("entrega")}
+                titleFontSize={stepTitleSize}
+              />
+            </div>
           </div>
 
           {/* ─── Column 2: Pagamento ─── */}
-          <div>
+          <div className={mobileHidden("pagamento")}>
             <StepPagamento
               paymentMethod={paymentMethod}
               setPaymentMethod={setPaymentMethod}
@@ -776,6 +831,7 @@ function CheckoutPageContent() {
             )}
           </div>
         </main>
+        </>
       )}
 
       {!orderPaid && (effectiveSettings.social_proofs_enabled ?? true) && (
