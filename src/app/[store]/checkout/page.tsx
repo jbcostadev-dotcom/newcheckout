@@ -309,6 +309,9 @@ function CheckoutPageContent() {
                 logo_url: data?.store.settings.logo_url,
                 header_store_name_visible: data?.store.settings.header_store_name_visible,
                 header_secure_badge: data?.store.settings.header_secure_badge,
+                header_logo_alignment: data?.store.settings.header_logo_alignment,
+                header_bg_color: data?.store.settings.header_bg_color,
+                header_icon_color: data?.store.settings.header_icon_color,
                 primary_color: data?.store.settings.primary_color,
                 dark_mode: data?.store.settings.dark_mode,
                 font_family: data?.store.settings.font_family,
@@ -436,6 +439,9 @@ function CheckoutPageContent() {
             logo_url: data?.store.settings.logo_url,
             header_store_name_visible: data?.store.settings.header_store_name_visible,
             header_secure_badge: data?.store.settings.header_secure_badge,
+            header_logo_alignment: data?.store.settings.header_logo_alignment,
+            header_bg_color: data?.store.settings.header_bg_color,
+            header_icon_color: data?.store.settings.header_icon_color,
             primary_color: data?.store.settings.primary_color,
             dark_mode: data?.store.settings.dark_mode,
             font_family: data?.store.settings.font_family,
@@ -518,6 +524,38 @@ function CheckoutPageContent() {
     settings.banner_height === "sm" ? 60 : settings.banner_height === "lg" ? 160 : 100;
 
   const stepTitleSize = settings.step_title_font_size || "1.25rem";
+  const logoAlign = settings.header_logo_alignment || "left";
+  const iconColor = settings.header_icon_color || "var(--text-secondary)";
+
+  const LogoContent = (
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      {settings.logo_url && (
+        <img
+          src={settings.logo_url}
+          alt=""
+          style={{ height: 32, borderRadius: 4, objectFit: "contain" }}
+        />
+      )}
+      {(settings.header_store_name_visible ?? true) && !settings.logo_url && (
+        <h1 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--text-primary)" }}>
+          {store.name}
+        </h1>
+      )}
+    </div>
+  );
+
+  const BadgeContent = (settings.header_secure_badge ?? true) ? (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </svg>
+      <div style={{ textAlign: "right", lineHeight: 1.2 }}>
+        <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary)", letterSpacing: 0.5 }}>PAGAMENTO</div>
+        <div style={{ fontSize: "0.65rem", fontWeight: 600, color: iconColor }}>100% SEGURO</div>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--checkout-bg)", fontSize: settings.font_size_base || "16px" }}>
@@ -528,35 +566,34 @@ function CheckoutPageContent() {
           alignItems: "center",
           justifyContent: "space-between",
           padding: "16px 32px",
-          background: "var(--card-bg)",
+          background: settings.header_bg_color || "var(--card-bg)",
           borderBottom: "1px solid var(--border-color)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {settings.logo_url && (
-            <img
-              src={settings.logo_url}
-              alt=""
-              style={{ height: 32, borderRadius: 4, objectFit: "contain" }}
-            />
-          )}
-          {(settings.header_store_name_visible ?? true) && (
-            <h1 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--text-primary)" }}>
-              {store.name}
-            </h1>
-          )}
-        </div>
-        {(settings.header_secure_badge ?? true) && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-secondary)" }}>
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-            <div style={{ textAlign: "right", lineHeight: 1.2 }}>
-              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary)", letterSpacing: 0.5 }}>PAGAMENTO</div>
-              <div style={{ fontSize: "0.65rem", fontWeight: 600, color: "var(--text-secondary)" }}>100% SEGURO</div>
+        {logoAlign === "center" ? (
+          <>
+            <div style={{ flex: 1, display: "flex", justifyContent: "flex-start" }} />
+            <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
+              {LogoContent}
             </div>
-          </div>
+            <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>
+              {BadgeContent}
+            </div>
+          </>
+        ) : logoAlign === "right" ? (
+          <>
+            <div style={{ flex: 1, display: "flex", justifyContent: "flex-start" }}>
+              {BadgeContent}
+            </div>
+            <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>
+              {LogoContent}
+            </div>
+          </>
+        ) : (
+          <>
+            {LogoContent}
+            {BadgeContent}
+          </>
         )}
       </header>
 

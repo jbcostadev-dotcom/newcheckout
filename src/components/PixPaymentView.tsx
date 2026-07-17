@@ -10,6 +10,9 @@ export interface PixPaymentSettings {
   logo_url?: string | null;
   header_store_name_visible?: boolean;
   header_secure_badge?: boolean;
+  header_logo_alignment?: string;
+  header_bg_color?: string;
+  header_icon_color?: string;
   primary_color?: string | null;
   dark_mode?: boolean;
   font_family?: string | null;
@@ -166,6 +169,58 @@ export default function PixPaymentView({
   const isExpired = timerReady && timeLeft === 0;
   const showStoreName = settings.header_store_name_visible ?? true;
   const showSecureBadge = settings.header_secure_badge ?? true;
+  const logoAlign = settings.header_logo_alignment || "left";
+  const iconColor = settings.header_icon_color || "var(--text-secondary)";
+
+  const LogoContent = (
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      {settings.logo_url && (
+        <img
+          src={settings.logo_url}
+          alt=""
+          style={{ height: 32, borderRadius: 4, objectFit: "contain" }}
+        />
+      )}
+      {showStoreName && !settings.logo_url && (
+        <h1 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--text-primary)" }}>
+          {storeName}
+        </h1>
+      )}
+    </div>
+  );
+
+  const BadgeContent = showSecureBadge ? (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke={iconColor}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </svg>
+      <div style={{ textAlign: "right", lineHeight: 1.2 }}>
+        <div
+          style={{
+            fontSize: "0.75rem",
+            fontWeight: 700,
+            color: "var(--text-primary)",
+            letterSpacing: 0.5,
+          }}
+        >
+          PAGAMENTO
+        </div>
+        <div style={{ fontSize: "0.65rem", fontWeight: 600, color: iconColor }}>
+          100% SEGURO
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <div
@@ -184,56 +239,34 @@ export default function PixPaymentView({
           alignItems: "center",
           justifyContent: "space-between",
           padding: "16px 24px",
-          background: "var(--card-bg)",
+          background: settings.header_bg_color || "var(--card-bg)",
           borderBottom: "1px solid var(--border-color)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {settings.logo_url && (
-            <img
-              src={settings.logo_url}
-              alt=""
-              style={{ height: 32, borderRadius: 4, objectFit: "contain" }}
-            />
-          )}
-          {showStoreName && (
-            <h1 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--text-primary)" }}>
-              {storeName}
-            </h1>
-          )}
-        </div>
-        {showSecureBadge && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-            <div style={{ textAlign: "right", lineHeight: 1.2 }}>
-              <div
-                style={{
-                  fontSize: "0.75rem",
-                  fontWeight: 700,
-                  color: "var(--text-primary)",
-                  letterSpacing: 0.5,
-                }}
-              >
-                PAGAMENTO
-              </div>
-              <div style={{ fontSize: "0.65rem", fontWeight: 600, color: "var(--text-secondary)" }}>
-                100% SEGURO
-              </div>
+        {logoAlign === "center" ? (
+          <>
+            <div style={{ flex: 1, display: "flex", justifyContent: "flex-start" }} />
+            <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
+              {LogoContent}
             </div>
-          </div>
+            <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>
+              {BadgeContent}
+            </div>
+          </>
+        ) : logoAlign === "right" ? (
+          <>
+            <div style={{ flex: 1, display: "flex", justifyContent: "flex-start" }}>
+              {BadgeContent}
+            </div>
+            <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>
+              {LogoContent}
+            </div>
+          </>
+        ) : (
+          <>
+            {LogoContent}
+            {BadgeContent}
+          </>
         )}
       </header>
 
