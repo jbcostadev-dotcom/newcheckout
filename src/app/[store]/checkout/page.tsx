@@ -698,39 +698,6 @@ function CheckoutPageContent() {
         </div>
       ) : (
         <>
-        {/* ─── Mobile Step Progress Bar ─── */}
-        <div className="mobile-step-progress">
-          {steps.map((s, i) => (
-            <React.Fragment key={s.id}>
-              <div
-                className={`mobile-step-progress-item ${getStepState(s.id)}`}
-                onClick={() => {
-                  if (completed.includes(s.id) || step === s.id) handleEditStep(s.id);
-                }}
-                style={{ cursor: completed.includes(s.id) ? "pointer" : "default" }}
-              >
-                <div className="mobile-step-progress-circle">
-                  {completed.includes(s.id) && step !== s.id ? (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : (
-                    s.num
-                  )}
-                </div>
-                <span className="mobile-step-progress-label">{s.label}</span>
-              </div>
-              {i < steps.length - 1 && (
-                <div
-                  className={`mobile-step-progress-line ${
-                    completed.includes(s.id) ? "filled" : ""
-                  }`}
-                />
-              )}
-            </React.Fragment>
-          ))}
-        </div>
-
         {/* ─── Main 3-Column Layout ─── */}
         <main
           style={{
@@ -745,6 +712,39 @@ function CheckoutPageContent() {
           }}
           className="checkout-main"
         >
+          {/* ─── Mobile Step Progress Bar ─── */}
+          <div className="mobile-step-progress">
+            {steps.map((s, i) => (
+              <React.Fragment key={s.id}>
+                <div
+                  className={`mobile-step-progress-item ${getStepState(s.id)}`}
+                  onClick={() => {
+                    if (completed.includes(s.id) || step === s.id) handleEditStep(s.id);
+                  }}
+                  style={{ cursor: completed.includes(s.id) ? "pointer" : "default" }}
+                >
+                  <div className="mobile-step-progress-circle">
+                    {completed.includes(s.id) && step !== s.id ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      s.num
+                    )}
+                  </div>
+                  <span className="mobile-step-progress-label">{s.label}</span>
+                </div>
+                {i < steps.length - 1 && (
+                  <div
+                    className={`mobile-step-progress-line ${
+                      completed.includes(s.id) ? "filled" : ""
+                    }`}
+                  />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+
           {/* ─── Column 1: Identificação + Entrega ─── */}
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <div className={mobileHidden("dados")}>
