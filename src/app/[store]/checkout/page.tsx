@@ -95,6 +95,32 @@ function CheckoutPageContent() {
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "credit_card" | "boleto">("credit_card");
   const [sdkError, setSdkError] = useState<string | null>(null);
 
+  // Determine which payment methods are enabled based on API response.
+  const enabledMethods = useMemo(() => {
+    const pm = data?.store.payment_methods;
+    if (!pm) return { pix: true, card: true, boleto: true }; // backwards compat
+    return {
+      pix: pm.pix?.enabled ?? true,
+      card: pm.card?.enabled ?? true,
+      boleto: pm.boleto?.enabled ?? false,
+    };
+  }, [data]);
+
+  // Auto-select the first enabled payment method when data loads.
+  const [hasAutoSelected, setHasAutoSelected] = useState(false);
+  useEffect(() => {
+    if (!data || hasAutoSelected) return;
+    setHasAutoSelected(true);
+    // Priority: credit_card > pix > boleto
+    if (enabledMethods.card) {
+      setPaymentMethod("credit_card");
+    } else if (enabledMethods.pix) {
+      setPaymentMethod("pix");
+    } else if (enabledMethods.boleto) {
+      setPaymentMethod("boleto");
+    }
+  }, [data, enabledMethods, hasAutoSelected]);
+
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -126,8 +152,12 @@ function CheckoutPageContent() {
 
   const [orderPaid, setOrderPaid] = useState(false);
 
-  // Chave pública da Unipay (pk_live_*) vinda do backend (gateways unipay).
+  // Resolve public key for the card gateway from payment_methods.
+  // Falls back to legacy gateways lookup for backwards compatibility.
   const unipayPublicKey = useMemo(() => {
+    const pm = data?.store.payment_methods;
+    if (pm?.card?.public_key) return pm.card.public_key;
+    // Legacy fallback
     const gw = data?.store.gateways?.find((g) => g.provider === "unipay");
     return gw?.public_key ?? null;
   }, [data]);
@@ -800,6 +830,7 @@ function CheckoutPageContent() {
               titleFontSize={stepTitleSize}
               sdkReady={fastSoft.ready}
               sdkError={sdkError}
+              enabledMethods={enabledMethods}
             />
           </div>
 

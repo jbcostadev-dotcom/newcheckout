@@ -64,6 +64,11 @@ export interface CheckoutData {
     };
     // Para a Unipay, public_key = pk_live_* usada no SDK client-side.
     gateways: { provider: string; public_key?: string | null }[];
+    payment_methods?: {
+      pix: { enabled: boolean; gateway_provider?: string | null; public_key?: string | null };
+      card: { enabled: boolean; gateway_provider?: string | null; public_key?: string | null };
+      boleto: { enabled: boolean; gateway_provider?: string | null; public_key?: string | null };
+    };
   };
   products: CheckoutProduct[];
   total: number;
