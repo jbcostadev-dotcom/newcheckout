@@ -133,11 +133,6 @@ export default function OrderSummary({
               <div style={{ fontSize: "0.85rem", fontWeight: 600, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                 {g.product.name}
               </div>
-              {g.product.description && (
-                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                  {g.product.description}
-                </div>
-              )}
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
