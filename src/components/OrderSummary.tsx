@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { formatCurrency } from "@/lib/utils";
 import type { CheckoutProduct } from "@/types";
 
@@ -36,11 +36,56 @@ export default function OrderSummary({
   const finalTotal = total - discount;
   const productTotal = subtotal !== undefined ? subtotal : total - shipping;
 
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    handleResize(); // Check initially
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const showContent = !isMobile || isExpanded;
+
   return (
     <div>
-      {/* Title */}
-      <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: 12 }}>{title}</h2>
+      {/* Title / Mobile Header */}
+      {isMobile ? (
+        <div
+          onClick={() => setIsExpanded(!isExpanded)}
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            cursor: "pointer",
+            marginBottom: showContent ? 16 : 0,
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <span style={{ fontSize: "1.1rem", fontWeight: 700 }}>Seu carrinho</span>
+            <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>Informações da sua compra</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: "1.1rem", fontWeight: 700 }}>{formatCurrency(finalTotal)}</span>
+            <svg
+              width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              style={{
+                transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                transition: "transform 0.2s",
+                color: "#9c27b0",
+              }}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </div>
+        </div>
+      ) : (
+        <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: 12 }}>{title}</h2>
+      )}
 
+      {/* Content wrapper */}
+      <div style={{ display: showContent ? "block" : "none" }}>
       {/* Coupon link */}
       {couponEnabled && (
         <button type="button" className="coupon-link" style={{ marginBottom: 16 }}>
@@ -163,6 +208,7 @@ export default function OrderSummary({
         ))}
       </div>
 
+      </div>
 
     </div>
   );
