@@ -16,6 +16,7 @@ import StepDados from "@/components/StepDados";
 import StepEntrega from "@/components/StepEntrega";
 import StepPagamento from "@/components/StepPagamento";
 import OrderSummary, { GroupedItem } from "@/components/OrderSummary";
+import SocialProofs from "@/components/SocialProofs";
 import Footer from "@/components/Footer";
 import ScarcityBar from "@/components/ScarcityBar";
 
@@ -731,8 +732,17 @@ function CheckoutPageContent() {
                 couponEnabled={settings.summary_coupon_enabled ?? true}
               />
             </div>
+            <div className="desktop-social-proofs" style={{ marginTop: 24 }}>
+              <SocialProofs />
+            </div>
           </div>
         </main>
+      )}
+
+      {!orderPaid && (
+        <div className="mobile-social-proofs">
+          <SocialProofs />
+        </div>
       )}
 
       <Footer
@@ -761,6 +771,17 @@ function CheckoutPageContent() {
           font-size: ${stepTitleSize} !important;
         }
 
+        .desktop-social-proofs {
+          display: block;
+        }
+
+        .mobile-social-proofs {
+          display: none;
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 0 24px 32px 24px;
+        }
+
         @media (max-width: 1024px) {
           .checkout-main {
             grid-template-columns: 1fr 1fr !important;
@@ -781,6 +802,13 @@ function CheckoutPageContent() {
           .checkout-main > div:last-child {
             position: static !important;
             order: -1 !important;
+          }
+          .desktop-social-proofs {
+            display: none !important;
+          }
+          .mobile-social-proofs {
+            display: block !important;
+            padding: 0 16px 24px 16px !important;
           }
         }
       `}</style>

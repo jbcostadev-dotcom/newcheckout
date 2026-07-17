@@ -21,30 +21,6 @@ interface OrderSummaryProps {
   couponEnabled?: boolean;
 }
 
-const REVIEWS = [
-  {
-    name: "Cliente Satisfeita",
-    stars: 5,
-    text: "Atendimento excelente e compra rápida. Gostei muito do resultado!",
-    avatar: "https://randomuser.me/api/portraits/women/44.jpg",
-  },
-  {
-    name: "Cliente Verificada",
-    stars: 4,
-    text: "Produto chegou no prazo e a experiência foi incrível.",
-    avatar: "https://randomuser.me/api/portraits/women/68.jpg",
-  },
-];
-
-function StarRating({ count }: { count: number }) {
-  return (
-    <span className="review-stars">
-      {Array.from({ length: 5 }, (_, i) => (
-        <span key={i}>{i < count ? "★" : "☆"}</span>
-      ))}
-    </span>
-  );
-}
 
 export default function OrderSummary({
   items,
@@ -192,23 +168,7 @@ export default function OrderSummary({
         ))}
       </div>
 
-      {/* Reviews */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
-        {REVIEWS.map((review, idx) => (
-          <div key={idx} className="review-card">
-            <img
-              src={review.avatar}
-              alt={review.name}
-              className="review-avatar"
-            />
-            <div>
-              <StarRating count={review.stars} />
-              <div className="review-name">{review.name}</div>
-              <div className="review-text">{review.text}</div>
-            </div>
-          </div>
-        ))}
-      </div>
+
     </div>
   );
 }
