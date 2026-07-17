@@ -769,16 +769,18 @@ function CheckoutPageContent() {
                 couponEnabled={settings.summary_coupon_enabled ?? true}
               />
             </div>
-            <div className="desktop-social-proofs" style={{ marginTop: 24 }}>
-              <SocialProofs />
-            </div>
+            {(effectiveSettings.social_proofs_enabled ?? true) && (
+              <div className="desktop-social-proofs" style={{ marginTop: 24 }}>
+                <SocialProofs reviews={data?.social_proofs} />
+              </div>
+            )}
           </div>
         </main>
       )}
 
-      {!orderPaid && (
+      {!orderPaid && (effectiveSettings.social_proofs_enabled ?? true) && (
         <div className="mobile-social-proofs">
-          <SocialProofs />
+          <SocialProofs reviews={data?.social_proofs} />
         </div>
       )}
 

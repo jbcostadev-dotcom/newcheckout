@@ -16,6 +16,13 @@ export interface ShippingMethod {
   icon: string | null;
 }
 
+export interface SocialProofItem {
+  name: string;
+  testimonial: string;
+  photo_url: string | null;
+  stars: number;
+}
+
 export interface CheckoutData {
   store: {
     name: string;
@@ -53,6 +60,7 @@ export interface CheckoutData {
       footer_cnpj?: string | null;
       font_family?: string;
       font_size_base?: string;
+      social_proofs_enabled?: boolean;
     };
     // Para a Unipay, public_key = pk_live_* usada no SDK client-side.
     gateways: { provider: string; public_key?: string | null }[];
@@ -60,6 +68,7 @@ export interface CheckoutData {
   products: CheckoutProduct[];
   total: number;
   shipping_methods: ShippingMethod[];
+  social_proofs?: SocialProofItem[];
   preview?: boolean;
 }
 

@@ -1,21 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-
-const REVIEWS = [
-  {
-    name: "Cliente Satisfeita",
-    stars: 5,
-    text: "Atendimento excelente e compra rápida. Gostei muito do resultado!",
-    avatar: "https://randomuser.me/api/portraits/women/44.jpg",
-  },
-  {
-    name: "Cliente Verificada",
-    stars: 4,
-    text: "Produto chegou no prazo e a experiência foi incrível.",
-    avatar: "https://randomuser.me/api/portraits/women/68.jpg",
-  },
-];
+import type { SocialProofItem } from "@/types";
 
 function StarRating({ count }: { count: number }) {
   return (
@@ -27,15 +13,25 @@ function StarRating({ count }: { count: number }) {
   );
 }
 
-export default function SocialProofs({ className }: { className?: string }) {
+interface SocialProofsProps {
+  className?: string;
+  reviews?: SocialProofItem[];
+}
+
+export default function SocialProofs({ className, reviews }: SocialProofsProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  const items = reviews && reviews.length > 0 ? reviews : [];
+
   useEffect(() => {
+    if (items.length <= 1) return;
     const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % REVIEWS.length);
+      setCurrentIndex((prev) => (prev + 1) % items.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [items.length]);
+
+  if (items.length === 0) return null;
 
   return (
     <div className={className} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -49,7 +45,7 @@ export default function SocialProofs({ className }: { className?: string }) {
             transform: `translateX(-${currentIndex * 100}%)`
           }}
         >
-          {REVIEWS.map((review, idx) => (
+          {items.map((review, idx) => (
             <div key={idx} style={{ minWidth: "100%", paddingRight: 4 }}>
               <div 
                 className="review-card" 
@@ -69,15 +65,35 @@ export default function SocialProofs({ className }: { className?: string }) {
                       {review.name}
                     </div>
                   </div>
-                  <img
-                    src={review.avatar}
-                    alt={review.name}
-                    className="review-avatar"
-                    style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover" }}
-                  />
+                  {review.photo_url ? (
+                    <img
+                      src={review.photo_url}
+                      alt={review.name}
+                      className="review-avatar"
+                      style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover" }}
+                    />
+                  ) : (
+                    <div
+                      className="review-avatar"
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: "50%",
+                        background: "var(--border-color, #e0e0e0)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "1.1rem",
+                        fontWeight: 700,
+                        color: "var(--text-secondary, #666)",
+                      }}
+                    >
+                      {review.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                 </div>
                 <div className="review-text" style={{ fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: 1.4 }}>
-                  {review.text}
+                  {review.testimonial}
                 </div>
               </div>
             </div>
@@ -85,25 +101,27 @@ export default function SocialProofs({ className }: { className?: string }) {
         </div>
       </div>
 
-      <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 4 }}>
-        {REVIEWS.map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => setCurrentIndex(idx)}
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              border: "none",
-              background: idx === currentIndex ? "#4b5563" : "#cbd5e1",
-              cursor: "pointer",
-              padding: 0,
-              transition: "background 0.2s ease"
-            }}
-            aria-label={`Ir para o depoimento ${idx + 1}`}
-          />
-        ))}
-      </div>
+      {items.length > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 4 }}>
+          {items.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentIndex(idx)}
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                border: "none",
+                background: idx === currentIndex ? "#4b5563" : "#cbd5e1",
+                cursor: "pointer",
+                padding: 0,
+                transition: "background 0.2s ease"
+              }}
+              aria-label={`Ir para o depoimento ${idx + 1}`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
