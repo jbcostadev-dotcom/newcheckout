@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   cvvLengthForBrand,
   getCardBrand,
@@ -59,6 +59,8 @@ export default function StepPagamento({
   enabledMethods = { pix: true, card: true, boleto: true },
   installmentConfig,
 }: StepPagamentoProps) {
+  const [cardNumberBlurred, setCardNumberBlurred] = useState(false);
+
   const cardNumberDigits = card.number.replace(/\D+/g, "");
   const cardBrand = getCardBrand(cardNumberDigits);
   const cvvMaxLength = cvvLengthForBrand(cardBrand);
@@ -68,7 +70,9 @@ export default function StepPagamento({
   const holderValid = card.holder.trim().length >= 3;
 
   const numberError =
-    cardNumberDigits.length >= 13 && !luhnValid ? "Cartão inválido." : null;
+    cardNumberBlurred && cardNumberDigits.length >= 13 && !luhnValid
+      ? "Cartão inválido."
+      : null;
   const expiryError =
     card.expiry.length === 5 && !expiryValid
       ? "A validade deve ser a partir do próximo mês."
@@ -186,6 +190,8 @@ export default function StepPagamento({
                       onChange={(e) =>
                         setCard((prev) => ({ ...prev, number: maskCardNumber(e.target.value) }))
                       }
+                      onFocus={() => setCardNumberBlurred(false)}
+                      onBlur={() => setCardNumberBlurred(true)}
                       style={{ paddingRight: 40, borderColor: numberError ? "#b91c1c" : undefined }}
                     />
                     <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: numberError ? "#b91c1c" : "var(--text-muted)" }}>
