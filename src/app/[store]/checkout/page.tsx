@@ -4,13 +4,14 @@ import React, { Suspense, useEffect, useState, useCallback, useMemo } from "reac
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { apiGet, apiPost } from "@/lib/api";
 import { useFastSoft } from "@/lib/useFastSoft";
-import {
+import type {
   CheckoutData,
   CheckoutProcessResponse,
   CheckoutProduct,
   ShippingAddress,
   ShippingMethod,
   CardData,
+  InstallmentConfig,
 } from "@/types";
 import StepDados from "@/components/StepDados";
 import StepEntrega from "@/components/StepEntrega";
@@ -106,12 +107,17 @@ function CheckoutPageContent() {
     };
   }, [data]);
 
-  // Auto-select the first enabled payment method when data loads.
+  const installmentConfig = useMemo((): InstallmentConfig | undefined => {
+    const pm = data?.store.payment_methods;
+    return pm?.card?.installment_config ?? undefined;
+  }, [data]);
+
   const [hasAutoSelected, setHasAutoSelected] = useState(false);
   useEffect(() => {
     if (!data || hasAutoSelected) return;
     setHasAutoSelected(true);
-    // Priority: credit_card > pix > boleto
+    const preSelected = installmentConfig?.pre_selected ?? 1;
+    setCard((prev) => ({ ...prev, installments: preSelected }));
     if (enabledMethods.card) {
       setPaymentMethod("credit_card");
     } else if (enabledMethods.pix) {
@@ -119,7 +125,7 @@ function CheckoutPageContent() {
     } else if (enabledMethods.boleto) {
       setPaymentMethod("boleto");
     }
-  }, [data, enabledMethods, hasAutoSelected]);
+  }, [data, enabledMethods, hasAutoSelected, installmentConfig]);
 
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -831,6 +837,7 @@ function CheckoutPageContent() {
               sdkReady={fastSoft.ready}
               sdkError={sdkError}
               enabledMethods={enabledMethods}
+              installmentConfig={installmentConfig}
             />
           </div>
 

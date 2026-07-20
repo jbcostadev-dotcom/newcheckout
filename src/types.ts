@@ -25,6 +25,14 @@ export interface SocialProofItem {
   stars: number;
 }
 
+export interface InstallmentConfig {
+  type: "default" | "custom";
+  default_rate: number;
+  rates: (number | null)[];
+  pre_selected: number;
+  limit: number;
+}
+
 export interface CheckoutData {
   store: {
     name: string;
@@ -64,11 +72,10 @@ export interface CheckoutData {
       font_size_base?: string;
       social_proofs_enabled?: boolean;
     };
-    // Para a Unipay, public_key = pk_live_* usada no SDK client-side.
     gateways: { provider: string; public_key?: string | null }[];
     payment_methods?: {
       pix: { enabled: boolean; gateway_provider?: string | null; public_key?: string | null };
-      card: { enabled: boolean; gateway_provider?: string | null; public_key?: string | null };
+      card: { enabled: boolean; gateway_provider?: string | null; public_key?: string | null; installment_config?: InstallmentConfig };
       boleto: { enabled: boolean; gateway_provider?: string | null; public_key?: string | null };
     };
   };

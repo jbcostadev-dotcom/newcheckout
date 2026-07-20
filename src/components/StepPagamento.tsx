@@ -1,9 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { maskCardExpiry, maskCardNumber, maskCvv, maskCpf } from "@/lib/masks";
 import { formatCurrency } from "@/lib/utils";
-import type { CardData } from "@/types";
+import type { CardData, InstallmentConfig } from "@/types";
 
 interface StepPagamentoProps {
   paymentMethod: "pix" | "credit_card" | "boleto";
@@ -25,6 +25,7 @@ interface StepPagamentoProps {
   sdkReady?: boolean;
   sdkError?: string | null;
   enabledMethods?: { pix: boolean; card: boolean; boleto: boolean };
+  installmentConfig?: InstallmentConfig;
 }
 
 export default function StepPagamento({
@@ -47,6 +48,7 @@ export default function StepPagamento({
   sdkReady = true,
   sdkError = null,
   enabledMethods = { pix: true, card: true, boleto: true },
+  installmentConfig,
 }: StepPagamentoProps) {
   const cardValid =
     card.number.replace(/\D+/g, "").length >= 13 &&
@@ -65,6 +67,32 @@ export default function StepPagamento({
   const discountPct =
     paymentMethod === "pix" ? pixDiscount : paymentMethod === "credit_card" ? cardDiscount : boletoDiscount;
   const discountedTotal = total * (1 - discountPct / 100);
+
+  const installmentOptions = useMemo(() => {
+    const limit = installmentConfig?.limit ?? 12;
+    const config = installmentConfig;
+    const options: { value: number; label: string }[] = [];
+
+    for (let i = 1; i <= limit; i++) {
+      let rate = 0;
+      if (config) {
+        if (config.type === "custom") {
+          rate = config.rates?.[i - 1] ?? 0;
+        } else {
+          rate = config.default_rate ?? 0;
+        }
+      }
+      const totalWithInterest = discountedTotal * Math.pow(1 + rate / 100, i);
+      const installmentValue = totalWithInterest / i;
+      const rateLabel = rate > 0 ? ` (${rate.toString().replace(".", ",")}% a.m.)` : " (sem juros)";
+      options.push({
+        value: i,
+        label: `${i}x de ${formatCurrency(installmentValue)}${rateLabel}`,
+      });
+    }
+
+    return options;
+  }, [discountedTotal, installmentConfig]);
 
   // Inactive state
   if (!isActive) {
@@ -203,9 +231,9 @@ export default function StepPagamento({
                       setCard((prev) => ({ ...prev, installments: parseInt(e.target.value) }))
                     }
                   >
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
-                      <option key={n} value={n}>
-                        {n}x de {formatCurrency(discountedTotal / n)}
+                    {installmentOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
                       </option>
                     ))}
                   </select>
