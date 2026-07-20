@@ -69,13 +69,14 @@ export default function StepPagamento({
   const discountedTotal = total * (1 - discountPct / 100);
 
   const installmentOptions = useMemo(() => {
-    const limit = installmentConfig?.limit ?? 12;
     const config = installmentConfig;
+    const limit = config?.limit ?? 12;
+    const interestFree = config?.interest_free ?? 1;
     const options: { value: number; label: string }[] = [];
 
     for (let i = 1; i <= limit; i++) {
       let rate = 0;
-      if (config) {
+      if (config && i > interestFree) {
         if (config.type === "custom") {
           rate = config.rates?.[i - 1] ?? 0;
         } else {

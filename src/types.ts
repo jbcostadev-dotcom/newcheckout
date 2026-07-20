@@ -31,6 +31,7 @@ export interface InstallmentConfig {
   rates: (number | null)[];
   pre_selected: number;
   limit: number;
+  interest_free: number;
 }
 
 export interface CheckoutData {
