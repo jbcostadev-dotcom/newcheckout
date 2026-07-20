@@ -3,7 +3,6 @@
 import React, { Suspense, useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { apiGet, apiPost } from "@/lib/api";
-import { useFastSoft } from "@/lib/useFastSoft";
 import type {
   CheckoutData,
   CheckoutProcessResponse,
@@ -94,7 +93,6 @@ function CheckoutPageContent() {
   const [liveSettings, setLiveSettings] = useState<Partial<CheckoutData["store"]["settings"]>>({});
   const [processing, setProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "credit_card" | "boleto">("credit_card");
-  const [sdkError, setSdkError] = useState<string | null>(null);
 
   // Determine which payment methods are enabled based on API response.
   const enabledMethods = useMemo(() => {
@@ -160,18 +158,7 @@ function CheckoutPageContent() {
 
   // Resolve public key for the card gateway from payment_methods.
   // Falls back to legacy gateways lookup for backwards compatibility.
-  const unipayPublicKey = useMemo(() => {
-    const pm = data?.store.payment_methods;
-    if (pm?.card?.public_key) return pm.card.public_key;
-    // Legacy fallback
-    const gw = data?.store.gateways?.find((g) => g.provider === "unipay");
-    return gw?.public_key ?? null;
-  }, [data]);
 
-  const fastSoft = useFastSoft(unipayPublicKey);
-  useEffect(() => {
-    setSdkError(fastSoft.error);
-  }, [fastSoft.error]);
 
   const getStoreIdentifier = useCallback((): string => {
     const hostname = window.location.hostname;
@@ -369,19 +356,12 @@ function CheckoutPageContent() {
         return;
       }
 
-    // Cartão exige SDK + tokenização (com 3DS opcional).
-    let cardToken: string | null = null;
+    // Cartão: coleta dados e os envia para o backend processar na Unipay.
     let cardBrand: string | null = null;
     let cardLast4: string | null = null;
     let installments = card.installments;
 
     if (paymentMethod === "credit_card") {
-      if (!fastSoft.ready || !fastSoft.tokenizeWith3DS) {
-        alert(sdkError ?? "SDK de pagamento ainda carregando. Tente novamente em instantes.");
-        return;
-      }
-
-      // Converte expirar "MM/AA" → expMonth/expYear(4 dígitos).
       const [mm, yy] = card.expiry.split("/");
       const expMonth = (mm ?? "").trim();
       const expYear = yy && yy.length === 2 ? `20${yy}` : (yy ?? "").trim();
@@ -394,50 +374,6 @@ function CheckoutPageContent() {
 
       cardLast4 = digitsOnly.slice(-4) || null;
       cardBrand = guessCardBrand(digitsOnly);
-
-      try {
-        const token = await fastSoft.tokenizeWith3DS(
-          {
-            number: digitsOnly,
-            holderName: card.holder.trim().toUpperCase(),
-            expMonth,
-            expYear,
-            cvv: card.cvv,
-          },
-          {
-            transaction: {
-              amount: Math.round(displayTotal * 100), // centavos
-              currency: "BRL",
-              installments,
-            },
-            auth: {
-              customer: {
-                name: customerName.trim(),
-                email: customerEmail.trim(),
-                phoneNumber: customerPhone?.replace(/\D+/g, "") ?? "",
-              },
-              address: {
-                street: address.logradouro || "",
-                streetNumber: address.numero || "",
-                complement: address.complemento || "",
-                zipCode: address.cep?.replace(/\D+/g, "") || "",
-                neighborhood: address.bairro || "",
-                city: address.cidade || "",
-                state: address.uf || "",
-                country: "BR",
-              },
-            },
-          }
-        );
-        cardToken = token;
-      } catch (err) {
-        alert(
-          err instanceof Error
-            ? `Erro na tokenização do cartão: ${err.message}`
-            : "Erro na tokenização do cartão."
-        );
-        return;
-      }
     }
 
     setProcessing(true);
@@ -458,8 +394,11 @@ function CheckoutPageContent() {
         shipping_method_id: selectedShippingMethod?.id ?? null,
         shipping_address: address,
       };
-      if (paymentMethod === "credit_card" && cardToken) {
-        payload.card_token = cardToken;
+      if (paymentMethod === "credit_card") {
+        payload.card_number = card.number.replace(/\D+/g, "");
+        payload.card_holder = card.holder.trim().toUpperCase();
+        payload.card_expiry = card.expiry;
+        payload.card_cvv = card.cvv;
         payload.installments = installments;
         if (cardBrand) payload.card_brand = cardBrand;
         if (cardLast4) payload.card_last4 = cardLast4;
@@ -834,8 +773,8 @@ function CheckoutPageContent() {
               isActive={step === "pagamento"}
               total={displayTotal}
               titleFontSize={stepTitleSize}
-              sdkReady={fastSoft.ready}
-              sdkError={sdkError}
+              sdkReady={true}
+              sdkError={null}
               enabledMethods={enabledMethods}
               installmentConfig={installmentConfig}
             />
