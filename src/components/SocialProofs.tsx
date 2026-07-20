@@ -35,8 +35,6 @@ export default function SocialProofs({ className, reviews }: SocialProofsProps) 
 
   return (
     <div className={className} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <h2 style={{ fontSize: "1.1rem", fontWeight: 700 }}>Provas Sociais</h2>
-      
       <div style={{ position: "relative", overflow: "hidden", borderRadius: 10 }}>
         <div 
           style={{ 

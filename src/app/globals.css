@@ -96,7 +96,6 @@ body {
 }
 
 .step-card.active {
-  border-color: var(--border-active);
   box-shadow: 0 0 0 1px rgba(46, 125, 50, 0.08);
 }
 

@@ -598,7 +598,7 @@ function CheckoutPageContent() {
         <path d="M7 11V7a5 5 0 0 1 10 0v4" />
       </svg>
       <div style={{ textAlign: "right", lineHeight: 1.2 }}>
-        <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary)", letterSpacing: 0.5 }}>PAGAMENTO</div>
+        <div style={{ fontSize: "0.75rem", fontWeight: 700, color: iconColor, letterSpacing: 0.5 }}>PAGAMENTO</div>
         <div style={{ fontSize: "0.65rem", fontWeight: 600, color: iconColor }}>100% SEGURO</div>
       </div>
     </div>
