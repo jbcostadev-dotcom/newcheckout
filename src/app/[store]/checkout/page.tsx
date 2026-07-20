@@ -2,7 +2,8 @@
 
 import React, { Suspense, useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet, apiPost, ApiError } from "@/lib/api";
+import ErrorModal from "@/components/ErrorModal";
 import {
   cpfIsValid,
   cvvLengthForBrand,
@@ -148,6 +149,9 @@ function CheckoutPageContent() {
   const [completed, setCompleted] = useState<StepId[]>([]);
 
   const [orderPaid, setOrderPaid] = useState(false);
+
+  const [modalCardRefused, setModalCardRefused] = useState(false);
+  const [modalCardLimit, setModalCardLimit] = useState(false);
 
   // Resolve public key for the card gateway from payment_methods.
   // Falls back to legacy gateways lookup for backwards compatibility.
@@ -494,7 +498,28 @@ function CheckoutPageContent() {
           router.push(`/${storeSlug}/pix/${res.order_id}`);
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Erro ao processar pagamento.");
+      if (err instanceof ApiError) {
+        const message = err.message.toLowerCase();
+        const body = err.body as { error?: string; message?: string; details?: { error?: { refusedReason?: string } } } | null;
+        const refusedReason = body?.details?.error?.refusedReason?.toLowerCase() ?? "";
+        const isRefused =
+          message.includes("recusada") ||
+          refusedReason.includes("provider") ||
+          refusedReason.includes("recusado") ||
+          refusedReason.includes("recusada");
+        const isLimit = message.includes("limite de 3 tentativas") || message.includes("limite de tentativas");
+
+        if (isLimit) {
+          setModalCardLimit(true);
+          setPaymentMethod("pix");
+        } else if (isRefused) {
+          setModalCardRefused(true);
+        } else {
+          alert(err.message || "Erro ao processar pagamento.");
+        }
+      } else {
+        alert(err instanceof Error ? err.message : "Erro ao processar pagamento.");
+      }
     } finally {
       setProcessing(false);
     }
@@ -862,6 +887,22 @@ function CheckoutPageContent() {
           <SocialProofs reviews={data?.social_proofs} />
         </div>
       )}
+
+      <ErrorModal
+        isOpen={modalCardRefused}
+        title="Pagamento não aprovado"
+        message="Sua transação foi recusada pelo emissor. Use outro cartão ou forma de pagamento."
+        buttonText="Entendi"
+        onClose={() => setModalCardRefused(false)}
+      />
+
+      <ErrorModal
+        isOpen={modalCardLimit}
+        title="Limite de tentativas atingido"
+        message="Você atingiu o limite de tentativas para pagamentos com cartão. Utilize outra forma de pagamento."
+        buttonText="Pagar com PIX"
+        onClose={() => setModalCardLimit(false)}
+      />
 
       <Footer
         footer_text={settings.footer_text}
