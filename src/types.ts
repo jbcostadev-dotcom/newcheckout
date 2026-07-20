@@ -1,6 +1,8 @@
 export interface CheckoutProduct {
   id: number;
   name: string;
+  parent_title?: string | null;
+  attributes?: { name: string; value: string }[] | null;
   description?: string | null;
   price: number;
   image_url?: string | null;

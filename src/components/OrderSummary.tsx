@@ -176,8 +176,20 @@ export default function OrderSummary({
 
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: "0.85rem", fontWeight: 600, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                {g.product.name}
+                {g.product.parent_title || g.product.name}
               </div>
+              {g.product.attributes && g.product.attributes.length > 0 && (
+                <div style={{ marginTop: 2, display: "flex", flexDirection: "column", gap: 1 }}>
+                  {g.product.attributes.slice(0, 3).map((attr, idx) => (
+                    <div
+                      key={idx}
+                      style={{ fontSize: "0.7rem", color: "var(--text-muted)", lineHeight: 1.2 }}
+                    >
+                      {attr.name}: {attr.value}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
