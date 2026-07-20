@@ -72,6 +72,7 @@ export interface CheckoutData {
       font_family?: string;
       font_size_base?: string;
       social_proofs_enabled?: boolean;
+      default_payment_method?: "credit_card" | "pix" | "boleto";
     };
     gateways: { provider: string; public_key?: string | null }[];
     payment_methods?: {

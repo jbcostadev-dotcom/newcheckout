@@ -110,7 +110,16 @@ function CheckoutPageContent() {
     setHasAutoSelected(true);
     const preSelected = installmentConfig?.pre_selected ?? 1;
     setCard((prev) => ({ ...prev, installments: preSelected }));
-    if (enabledMethods.card) {
+
+    const configured = data.store.settings.default_payment_method ?? "credit_card";
+    const desired: "pix" | "credit_card" | "boleto" =
+      configured === "pix" ? "pix" : configured === "boleto" ? "boleto" : "credit_card";
+
+    if (desired === "pix" && enabledMethods.pix) {
+      setPaymentMethod("pix");
+    } else if (desired === "boleto" && enabledMethods.boleto) {
+      setPaymentMethod("boleto");
+    } else if (enabledMethods.card) {
       setPaymentMethod("credit_card");
     } else if (enabledMethods.pix) {
       setPaymentMethod("pix");
@@ -118,6 +127,22 @@ function CheckoutPageContent() {
       setPaymentMethod("boleto");
     }
   }, [data, enabledMethods, hasAutoSelected, installmentConfig]);
+
+  // Atualiza pré-seleção ao vivo no modo preview
+  useEffect(() => {
+    if (!isPreview) return;
+    const configured = liveSettings.default_payment_method;
+    if (!configured) return;
+    const desired: "pix" | "credit_card" | "boleto" =
+      configured === "pix" ? "pix" : configured === "boleto" ? "boleto" : "credit_card";
+    if (desired === "pix" && enabledMethods.pix) {
+      setPaymentMethod("pix");
+    } else if (desired === "boleto" && enabledMethods.boleto) {
+      setPaymentMethod("boleto");
+    } else if (desired === "credit_card" && enabledMethods.card) {
+      setPaymentMethod("credit_card");
+    }
+  }, [isPreview, liveSettings?.default_payment_method, enabledMethods]);
 
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
