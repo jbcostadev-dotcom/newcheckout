@@ -1,7 +1,16 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { maskCardExpiry, maskCardNumber, maskCvv, maskCpf } from "@/lib/masks";
+import {
+  cvvLengthForBrand,
+  getCardBrand,
+  isCardExpired,
+  isValidLuhn,
+  maskCardExpiry,
+  maskCardNumber,
+  maskCpf,
+  maskCvv,
+} from "@/lib/masks";
 import { formatCurrency } from "@/lib/utils";
 import type { CardData, InstallmentConfig } from "@/types";
 
@@ -50,11 +59,31 @@ export default function StepPagamento({
   enabledMethods = { pix: true, card: true, boleto: true },
   installmentConfig,
 }: StepPagamentoProps) {
+  const cardNumberDigits = card.number.replace(/\D+/g, "");
+  const cardBrand = getCardBrand(cardNumberDigits);
+  const cvvMaxLength = cvvLengthForBrand(cardBrand);
+  const luhnValid = isValidLuhn(cardNumberDigits);
+  const expiryValid = /^\d{2}\/\d{2}$/.test(card.expiry) && !isCardExpired(card.expiry);
+  const cvvValid = card.cvv.length === cvvMaxLength;
+  const holderValid = card.holder.trim().length >= 3;
+
+  const numberError =
+    cardNumberDigits.length >= 13 && !luhnValid ? "Cartão inválido." : null;
+  const expiryError =
+    card.expiry.length === 5 && !expiryValid
+      ? "A validade deve ser a partir do próximo mês."
+      : null;
+  const cvvError =
+    card.cvv.length > 0 && card.cvv.length !== cvvMaxLength
+      ? `CVV deve ter ${cvvMaxLength} dígitos.`
+      : null;
+
   const cardValid =
-    card.number.replace(/\D+/g, "").length >= 13 &&
-    /^\d{2}\/\d{2}$/.test(card.expiry) &&
-    card.cvv.length >= 3 &&
-    card.holder.trim().length >= 3;
+    cardNumberDigits.length >= 13 &&
+    luhnValid &&
+    expiryValid &&
+    cvvValid &&
+    holderValid;
 
   const sdkBlocked = paymentMethod === "credit_card" && !sdkReady;
 
@@ -157,15 +186,18 @@ export default function StepPagamento({
                       onChange={(e) =>
                         setCard((prev) => ({ ...prev, number: maskCardNumber(e.target.value) }))
                       }
-                      style={{ paddingRight: 40 }}
+                      style={{ paddingRight: 40, borderColor: numberError ? "#b91c1c" : undefined }}
                     />
-                    <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }}>
+                    <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: numberError ? "#b91c1c" : "var(--text-muted)" }}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
                         <line x1="1" y1="10" x2="23" y2="10" />
                       </svg>
                     </span>
                   </div>
+                  {numberError && (
+                    <p style={{ marginTop: 6, fontSize: "0.8rem", color: "#b91c1c" }}>{numberError}</p>
+                  )}
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -180,7 +212,11 @@ export default function StepPagamento({
                       onChange={(e) =>
                         setCard((prev) => ({ ...prev, expiry: maskCardExpiry(e.target.value) }))
                       }
+                      style={{ borderColor: expiryError ? "#b91c1c" : undefined }}
                     />
+                    {expiryError && (
+                      <p style={{ marginTop: 6, fontSize: "0.8rem", color: "#b91c1c" }}>{expiryError}</p>
+                    )}
                   </div>
                   <div>
                     <label className="checkout-label">Cód. de segurança</label>
@@ -188,12 +224,16 @@ export default function StepPagamento({
                       type="text"
                       inputMode="numeric"
                       className="checkout-input"
-                      placeholder="CVV"
+                      placeholder={cvvMaxLength === 4 ? "0000" : "000"}
                       value={card.cvv}
                       onChange={(e) =>
-                        setCard((prev) => ({ ...prev, cvv: maskCvv(e.target.value) }))
+                        setCard((prev) => ({ ...prev, cvv: maskCvv(e.target.value, cvvMaxLength) }))
                       }
+                      style={{ borderColor: cvvError ? "#b91c1c" : undefined }}
                     />
+                    {cvvError && (
+                      <p style={{ marginTop: 6, fontSize: "0.8rem", color: "#b91c1c" }}>{cvvError}</p>
+                    )}
                   </div>
                 </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { maskCpf, maskCelular } from "@/lib/masks";
+import { maskCpf, maskCelular, cpfIsValid, onlyDigits } from "@/lib/masks";
 
 interface StepDadosProps {
   name: string;
@@ -34,8 +34,31 @@ export default function StepDados({
   isCompleted,
   titleFontSize = "1.25rem",
 }: StepDadosProps) {
+  const docDigits = onlyDigits(document);
+  const phoneDigits = onlyDigits(phone);
+
   const canContinue =
-    name.trim().length >= 3 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
+    name.trim().length >= 3 &&
+    /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()) &&
+    docDigits.length === 11 &&
+    cpfIsValid(docDigits) &&
+    phoneDigits.length >= 10;
+
+  const handleContinue = () => {
+    if (!canContinue) {
+      if (name.trim().length < 3) {
+        alert("Preencha o nome completo.");
+      } else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) {
+        alert("Preencha um e-mail válido.");
+      } else if (docDigits.length !== 11 || !cpfIsValid(docDigits)) {
+        alert("Preencha um CPF válido.");
+      } else if (phoneDigits.length < 10) {
+        alert("Preencha o celular com DDD.");
+      }
+      return;
+    }
+    onContinue();
+  };
 
   // Completed summary view
   if (isCompleted && !isActive) {
@@ -136,7 +159,7 @@ export default function StepDados({
       <button
         type="button"
         className="btn-primary"
-        onClick={onContinue}
+        onClick={handleContinue}
         disabled={!canContinue}
       >
         Ir Para Entrega

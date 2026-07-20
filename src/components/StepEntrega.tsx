@@ -52,7 +52,11 @@ export default function StepEntrega({
 
   const cepDigits = address.cep.replace(/\D+/g, "");
   const cepValid = cepDigits.length === 8;
-  const addressComplete = cepValid && address.numero.trim().length > 0;
+  const addressComplete =
+    cepValid &&
+    address.logradouro.trim().length >= 3 &&
+    address.numero.trim().length > 0 &&
+    address.bairro.trim().length >= 2;
 
   // Pré-seleciona o primeiro frete quando a lista chega ou só existe um.
   useEffect(() => {
@@ -370,7 +374,16 @@ export default function StepEntrega({
       <button
         type="button"
         className="btn-primary"
-        onClick={onContinue}
+        onClick={() => {
+          if (!addressComplete) {
+            if (cepDigits.length !== 8) alert("Preencha o CEP válido.");
+            else if (address.logradouro.trim().length < 3) alert("Preencha o endereço.");
+            else if (address.numero.trim().length === 0) alert("Preencha o número.");
+            else if (address.bairro.trim().length < 2) alert("Preencha o bairro.");
+            return;
+          }
+          onContinue();
+        }}
         disabled={!addressComplete}
       >
         Ir para pagamento

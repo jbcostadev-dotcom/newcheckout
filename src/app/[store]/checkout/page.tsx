@@ -3,6 +3,14 @@
 import React, { Suspense, useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { apiGet, apiPost } from "@/lib/api";
+import {
+  cpfIsValid,
+  cvvLengthForBrand,
+  getCardBrand,
+  isCardExpired,
+  isValidLuhn,
+  onlyDigits,
+} from "@/lib/masks";
 import type {
   CheckoutData,
   CheckoutProcessResponse,
@@ -21,21 +29,6 @@ import Footer from "@/components/Footer";
 import ScarcityBar from "@/components/ScarcityBar";
 
 type StepId = "dados" | "entrega" | "pagamento";
-
-/**
- * Heurística simples para identificar a bandeira do cartão a partir do BIN.
- * Útil apenas para exibir; a Unipay retorna a brand oficial no webhook.
- */
-function guessCardBrand(number: string): string | null {
-  const n = number.replace(/\D+/g, "");
-  if (!n) return null;
-  if (/^4/.test(n)) return "VISA";
-  if (/^(5[1-5]|2[2-7])/.test(n)) return "MASTERCARD";
-  if (/^(4011|4312|4389|4514|4576|5041|5066|5067|509|6277|6362|6363|650|6516|6550)/.test(n)) return "ELO";
-  if (/^3[47]/.test(n)) return "AMEX";
-  if (/^(606282|3841)/.test(n)) return "HIPERCARD";
-  return null;
-}
 
 function groupProductsByIds(
   products: CheckoutProduct[],
@@ -302,9 +295,48 @@ function CheckoutPageContent() {
 
   const handlePayment = async () => {
     if (!data || groupedItems.length === 0) return;
-    if (!customerName.trim() || !customerEmail.trim()) {
-      alert("Preencha nome e e-mail.");
+    const docDigits = onlyDigits(customerDocument);
+    const phoneDigits = onlyDigits(customerPhone);
+
+    if (customerName.trim().length < 3) {
+      alert("Preencha o nome completo.");
       setStep("dados");
+      return;
+    }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(customerEmail.trim())) {
+      alert("Preencha um e-mail válido.");
+      setStep("dados");
+      return;
+    }
+    if (docDigits.length !== 11 || !cpfIsValid(docDigits)) {
+      alert("Preencha um CPF válido.");
+      setStep("dados");
+      return;
+    }
+    if (phoneDigits.length < 10) {
+      alert("Preencha o celular com DDD.");
+      setStep("dados");
+      return;
+    }
+
+    if (address.cep.replace(/\D+/g, "").length !== 8) {
+      alert("Preencha o CEP válido.");
+      setStep("entrega");
+      return;
+    }
+    if (address.logradouro.trim().length < 3) {
+      alert("Preencha o endereço.");
+      setStep("entrega");
+      return;
+    }
+    if (address.numero.trim().length === 0) {
+      alert("Preencha o número do endereço.");
+      setStep("entrega");
+      return;
+    }
+    if (address.bairro.trim().length < 2) {
+      alert("Preencha o bairro.");
+      setStep("entrega");
       return;
     }
 
@@ -362,18 +394,32 @@ function CheckoutPageContent() {
     let installments = card.installments;
 
     if (paymentMethod === "credit_card") {
-      const [mm, yy] = card.expiry.split("/");
-      const expMonth = (mm ?? "").trim();
-      const expYear = yy && yy.length === 2 ? `20${yy}` : (yy ?? "").trim();
       const digitsOnly = card.number.replace(/\D+/g, "");
+      const brand = getCardBrand(digitsOnly);
+      const expectedCvvLength = cvvLengthForBrand(brand);
 
-      if (digitsOnly.length < 13 || expMonth.length !== 2 || expYear.length !== 4 || card.cvv.length < 3 || card.holder.trim().length < 3) {
-        alert("Verifique os dados do cartão.");
+      if (digitsOnly.length < 13 || !isValidLuhn(digitsOnly)) {
+        alert("Número do cartão inválido.");
+        return;
+      }
+
+      if (!/^\d{2}\/\d{2}$/.test(card.expiry) || isCardExpired(card.expiry)) {
+        alert("Data de validade inválida.");
+        return;
+      }
+
+      if (card.cvv.length !== expectedCvvLength) {
+        alert(`CVV inválido. O cartão ${brand ?? ""} exige ${expectedCvvLength} dígitos.`);
+        return;
+      }
+
+      if (card.holder.trim().length < 3) {
+        alert("Nome do titular inválido.");
         return;
       }
 
       cardLast4 = digitsOnly.slice(-4) || null;
-      cardBrand = guessCardBrand(digitsOnly);
+      cardBrand = brand;
     }
 
     setProcessing(true);

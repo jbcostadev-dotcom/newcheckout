@@ -35,9 +35,13 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   if (!res.ok) {
     const data = await res.json().catch(() => null);
     const message =
-      (data && typeof data === "object" && "message" in data
-        ? String((data as { message: string }).message)
-        : null) ?? `Erro ${res.status}`;
+      (data && typeof data === "object"
+        ? String(
+            ("message" in data && (data as { message?: string }).message) ||
+              ("error" in data && (data as { error?: string }).error) ||
+              ""
+          )
+        : "") || `Erro ${res.status}`;
     throw new Error(message);
   }
 
