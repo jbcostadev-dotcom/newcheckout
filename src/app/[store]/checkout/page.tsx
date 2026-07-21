@@ -611,7 +611,8 @@ function CheckoutPageContent() {
 
       // Status pagos imediatamente (cartão autorizado/pago).
       if (res.status === "paid" || res.status === "authorized") {
-        setOrderPaid(true);
+        markCompleted("pagamento");
+        router.push(`/${storeSlug}/confirmed/${res.order_id}`);
         return;
       }
 

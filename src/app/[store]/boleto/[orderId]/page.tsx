@@ -39,7 +39,7 @@ function BoletoPageContent() {
       const res = await apiGet<PixStatusResponse>(`/checkout/order/${orderId}/pix`);
       setData(res);
       if (res.status === "paid" || res.status === "authorized") {
-        router.push(`/${storeSlug}/boleto/success`);
+        router.push(`/${storeSlug}/confirmed/${orderId}`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao carregar boleto.");

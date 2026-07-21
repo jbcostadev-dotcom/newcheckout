@@ -54,7 +54,7 @@ function PixPageContent() {
       setData(res);
 
       if (res.status === "paid" || res.status === "authorized") {
-        router.push(`/${storeSlug}/pix/success`);
+        router.push(`/${storeSlug}/confirmed/${orderId}`);
       } else if (res.status === "refused" || res.status === "canceled" || res.status === "failed") {
         setError("O pagamento foi recusado ou cancelado.");
       }

@@ -172,3 +172,48 @@ export interface PixStatusResponse {
   created_at?: string | null;
   store_name?: string | null;
 }
+
+export interface ConfirmedOrderItem {
+  id: number;
+  product_id: number;
+  name: string;
+  attributes?: { name: string; value: string }[] | null;
+  unit_price: number;
+  qty: number;
+  total: number;
+  image_url?: string | null;
+}
+
+export interface ConfirmedOrderAddress {
+  logradouro: string;
+  numero: string;
+  complemento?: string | null;
+  bairro: string;
+  cidade: string;
+  uf: string;
+  cep: string;
+}
+
+export interface ConfirmedOrderResponse {
+  order_id: number;
+  status: string;
+  payment_method: string;
+  payment_label: string;
+  installments?: number;
+  installment_label?: string | null;
+  card_brand?: string | null;
+  card_last4?: string | null;
+  customer_name: string;
+  customer_email: string;
+  customer_document: string;
+  customer_phone: string;
+  shipping_address: ConfirmedOrderAddress;
+  shipping_method?: string | null;
+  shipping_price: number;
+  shipping_label: string;
+  items: ConfirmedOrderItem[];
+  subtotal: number;
+  total: number;
+  store_name?: string | null;
+  created_at?: string | null;
+}
