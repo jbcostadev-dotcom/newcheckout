@@ -213,6 +213,10 @@ function CheckoutPageContent() {
           ? `/checkout/preview?domain=${encodeURIComponent(domain)}`
           : `/checkout?domain=${encodeURIComponent(domain)}&product_ids=${encodeURIComponent(productsParam)}`;
         const res = await apiGet<CheckoutData>(endpoint);
+        if (process.env.NODE_ENV === "development") {
+          // eslint-disable-next-line no-console
+          console.log("[checkout] order_bumps:", res.order_bumps);
+        }
         setData(res);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erro ao carregar checkout.");
@@ -241,11 +245,8 @@ function CheckoutPageContent() {
 
   // ── Order Bumps ────────────────────────────────────────────────
   // Filtra os bumps aplicáveis à forma de pagamento selecionada.
-  // Respeita o toggle global `enable_order_bump` (undefined ou true
-  // mostra as ofertas; false as oculta).
   const visibleOrderBumps: OrderBumpOffer[] = useMemo(() => {
     if (!data?.order_bumps) return [];
-    if (effectiveSettings.enable_order_bump === false) return [];
 
     const pmKey = paymentMethod; // "pix" | "credit_card" | "boleto"
     return data.order_bumps.filter((bump) => {
@@ -254,7 +255,7 @@ function CheckoutPageContent() {
       if (pmKey === "boleto" && !bump.show_boleto) return false;
       return true;
     });
-  }, [data?.order_bumps, effectiveSettings.enable_order_bump, paymentMethod]);
+  }, [data?.order_bumps, paymentMethod]);
 
   const selectedOrderBump: OrderBumpOffer | null = useMemo(() => {
     if (selectedOrderBumpId === null) return null;
