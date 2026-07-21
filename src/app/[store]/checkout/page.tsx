@@ -20,12 +20,14 @@ import type {
   ShippingMethod,
   CardData,
   InstallmentConfig,
+  OrderBumpOffer,
 } from "@/types";
 import StepDados from "@/components/StepDados";
 import StepEntrega from "@/components/StepEntrega";
 import StepPagamento from "@/components/StepPagamento";
 import OrderSummary, { GroupedItem } from "@/components/OrderSummary";
 import SocialProofs from "@/components/SocialProofs";
+import OrderBumpCard from "@/components/OrderBumpCard";
 import Footer from "@/components/Footer";
 import ScarcityBar from "@/components/ScarcityBar";
 
@@ -161,6 +163,8 @@ function CheckoutPageContent() {
 
   const [selectedShippingMethod, setSelectedShippingMethod] = useState<ShippingMethod | null>(null);
 
+  const [selectedOrderBumpId, setSelectedOrderBumpId] = useState<number | null>(null);
+
   const [card, setCard] = useState<CardData>({
     number: "",
     expiry: "",
@@ -235,6 +239,39 @@ function CheckoutPageContent() {
     [data?.store.settings, liveSettings]
   );
 
+  // ── Order Bumps ────────────────────────────────────────────────
+  // Filtra os bumps aplicáveis à forma de pagamento selecionada e
+  // respeita o toggle global `enable_order_bump` das settings.
+  const visibleOrderBumps: OrderBumpOffer[] = useMemo(() => {
+    if (!data?.order_bumps) return [];
+    if (effectiveSettings.enable_order_bump === false) return [];
+
+    const pmKey = paymentMethod; // "pix" | "credit_card" | "boleto"
+    return data.order_bumps.filter((bump) => {
+      if (pmKey === "credit_card" && !bump.show_credit_card) return false;
+      if (pmKey === "pix" && !bump.show_pix) return false;
+      if (pmKey === "boleto" && !bump.show_boleto) return false;
+      return true;
+    });
+  }, [data?.order_bumps, effectiveSettings.enable_order_bump, paymentMethod]);
+
+  const selectedOrderBump: OrderBumpOffer | null = useMemo(() => {
+    if (selectedOrderBumpId === null) return null;
+    return visibleOrderBumps.find((b) => b.id === selectedOrderBumpId) ?? null;
+  }, [visibleOrderBumps, selectedOrderBumpId]);
+
+  // Se o bump selecionado não for mais visível (troca de pagamento),
+  // limpa a seleção automaticamente.
+  useEffect(() => {
+    if (selectedOrderBumpId !== null && !selectedOrderBump) {
+      setSelectedOrderBumpId(null);
+    }
+  }, [selectedOrderBumpId, selectedOrderBump]);
+
+  const orderBumpPrice = selectedOrderBump
+    ? Number(selectedOrderBump.product.bump_price) || 0
+    : 0;
+
   useEffect(() => {
     const root = document.documentElement;
     const s = effectiveSettings;
@@ -302,7 +339,19 @@ function CheckoutPageContent() {
     return selectedShippingMethod.price;
   }, [selectedShippingMethod, subtotal]);
 
-  const displayTotal = subtotal + shippingPrice;
+  const subtotalWithBump = subtotal + orderBumpPrice;
+
+  const displayTotal = subtotalWithBump + shippingPrice;
+
+  // Itens exibidos no resumo pedidos: produtos normais + order bump selecionado.
+  const summaryItems: GroupedItem[] = useMemo(() => {
+    if (!selectedOrderBump) return groupedItems;
+    const bumpProduct = {
+      ...selectedOrderBump.product,
+      price: selectedOrderBump.product.bump_price,
+    };
+    return [...groupedItems, { product: bumpProduct, qty: 1 }];
+  }, [groupedItems, selectedOrderBump]);
 
   const markCompleted = (s: StepId) => {
     setCompleted((prev) => (prev.includes(s) ? prev : [...prev, s]));
@@ -523,6 +572,7 @@ function CheckoutPageContent() {
         payment_method: paymentMethod,
         shipping_method_id: selectedShippingMethod?.id ?? null,
         shipping_address: address,
+        order_bump_id: selectedOrderBump?.id ?? null,
       };
       if (paymentMethod === "credit_card") {
         payload.card_number = card.number.replace(/\D+/g, "");
@@ -942,8 +992,8 @@ function CheckoutPageContent() {
               }}
             >
               <OrderSummary
-                items={groupedItems}
-                subtotal={subtotal}
+                items={summaryItems}
+                subtotal={subtotalWithBump}
                 shipping={shippingPrice}
                 total={displayTotal}
                 discount={step === "pagamento" ? discountValue : 0}
@@ -952,6 +1002,23 @@ function CheckoutPageContent() {
                 couponEnabled={settings.summary_coupon_enabled ?? true}
               />
             </div>
+
+            {/* ─── Order Bumps ─── */}
+            {visibleOrderBumps.length > 0 && (
+              <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                {visibleOrderBumps.map((bump) => (
+                  <OrderBumpCard
+                    key={bump.id}
+                    bump={bump}
+                    selected={selectedOrderBumpId === bump.id}
+                    onToggle={(sel) =>
+                      setSelectedOrderBumpId(sel ? bump.id : null)
+                    }
+                  />
+                ))}
+              </div>
+            )}
+
             {(effectiveSettings.social_proofs_enabled ?? true) && (
               <div className="desktop-social-proofs" style={{ marginTop: 24 }}>
                 <SocialProofs reviews={data?.social_proofs} />

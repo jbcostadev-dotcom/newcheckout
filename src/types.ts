@@ -25,6 +25,36 @@ export interface SocialProofItem {
   stars: number;
 }
 
+export interface OrderBumpProduct {
+  id: number;
+  name: string;
+  parent_title?: string | null;
+  attributes?: { name: string; value: string }[] | null;
+  image_url?: string | null;
+  original_price: number;
+  bump_price: number;
+}
+
+export interface OrderBumpOffer {
+  id: number;
+  name: string;
+  product_id: number;
+  product: OrderBumpProduct;
+  discount_type: "fixed" | "percent";
+  discount_value: number;
+  scope: "any" | "specific";
+  show_credit_card: boolean;
+  show_pix: boolean;
+  show_boleto: boolean;
+  offer_title: string;
+  offer_message?: string | null;
+  bg_color: string;
+  border_color: string;
+  button_color: string;
+  button_text_color: string;
+  button_label: string;
+}
+
 export interface InstallmentConfig {
   type: "default" | "custom";
   default_rate: number;
@@ -85,6 +115,7 @@ export interface CheckoutData {
   total: number;
   shipping_methods: ShippingMethod[];
   social_proofs?: SocialProofItem[];
+  order_bumps?: OrderBumpOffer[];
   preview?: boolean;
 }
 
