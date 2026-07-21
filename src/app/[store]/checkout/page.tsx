@@ -240,8 +240,9 @@ function CheckoutPageContent() {
   );
 
   // ── Order Bumps ────────────────────────────────────────────────
-  // Filtra os bumps aplicáveis à forma de pagamento selecionada e
-  // respeita o toggle global `enable_order_bump` das settings.
+  // Filtra os bumps aplicáveis à forma de pagamento selecionada.
+  // Respeita o toggle global `enable_order_bump` (undefined ou true
+  // mostra as ofertas; false as oculta).
   const visibleOrderBumps: OrderBumpOffer[] = useMemo(() => {
     if (!data?.order_bumps) return [];
     if (effectiveSettings.enable_order_bump === false) return [];
