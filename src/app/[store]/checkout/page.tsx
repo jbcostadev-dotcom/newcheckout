@@ -308,12 +308,67 @@ function CheckoutPageContent() {
     setCompleted((prev) => (prev.includes(s) ? prev : [...prev, s]));
   };
 
+  // Registra o cliente no backend (e sincroniza com a Shopify quando a loja
+  // estiver conectada). Fire-and-forget — não bloqueia o fluxo do checkout.
+  const registerCustomer = useCallback(() => {
+    const domain = getStoreIdentifier();
+    const name = customerName.trim();
+    const email = customerEmail.trim();
+    const phone = customerPhone;
+    const document = customerDocument;
+
+    if (name.length < 3 || !email) return;
+
+    try {
+      apiPost("/checkout/customer", {
+        domain,
+        name,
+        email,
+        phone,
+        document,
+      }).catch(() => {
+        /* ignore: best-effort */
+      });
+    } catch {
+      /* ignore */
+    }
+  }, [customerName, customerEmail, customerPhone, customerDocument, getStoreIdentifier]);
+
+  // Atualiza o endereço do cliente no backend e na Shopify (best-effort).
+  const updateCustomerAddress = useCallback(() => {
+    const domain = getStoreIdentifier();
+    const email = customerEmail.trim();
+    if (!email || !address.cep) return;
+
+    try {
+      apiPost("/checkout/customer/address", {
+        domain,
+        email,
+        address: {
+          cep: address.cep,
+          logradouro: address.logradouro,
+          numero: address.numero,
+          complemento: address.complemento,
+          bairro: address.bairro,
+          cidade: address.cidade,
+          uf: address.uf,
+        },
+      }).catch(() => {
+        /* ignore: best-effort */
+      });
+    } catch {
+      /* ignore */
+    }
+  }, [customerEmail, address, getStoreIdentifier]);
+
   const handleDadosContinue = () => {
+    registerCustomer();
     markCompleted("dados");
     setStep("entrega");
   };
 
   const handleEntregaContinue = () => {
+    updateCustomerAddress();
     markCompleted("entrega");
     setStep("pagamento");
   };
