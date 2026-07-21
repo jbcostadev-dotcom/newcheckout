@@ -27,7 +27,6 @@ import StepEntrega from "@/components/StepEntrega";
 import StepPagamento from "@/components/StepPagamento";
 import OrderSummary, { GroupedItem } from "@/components/OrderSummary";
 import SocialProofs from "@/components/SocialProofs";
-import OrderBumpCard from "@/components/OrderBumpCard";
 import Footer from "@/components/Footer";
 import ScarcityBar from "@/components/ScarcityBar";
 
@@ -428,8 +427,9 @@ function CheckoutPageContent() {
     setStep(s);
   };
 
-  const handlePayment = async () => {
+  const handlePayment = async (method?: "pix" | "credit_card" | "boleto") => {
     if (!data || groupedItems.length === 0) return;
+    const pm = method ?? paymentMethod;
     const docDigits = onlyDigits(customerDocument);
     const phoneDigits = onlyDigits(customerPhone);
 
@@ -482,7 +482,7 @@ function CheckoutPageContent() {
     }
 
       // Pré-calcula descontos para aplicá-los no payload (checkout já exibe preço com desconto).
-      const methodDiscountPct = paymentMethod === "pix" ? 1 : paymentMethod === "credit_card" ? 5 : 0;
+      const methodDiscountPct = pm === "pix" ? 1 : pm === "credit_card" ? 5 : 0;
       const finalAmount = displayTotal * (1 - methodDiscountPct / 100);
 
       // A API calcula o total a partir dos itens + frete (sem desconto por método).
@@ -491,7 +491,7 @@ function CheckoutPageContent() {
       void finalAmount;
 
       if (isPreview) {
-        if (paymentMethod === "pix" || paymentMethod === "boleto") {
+        if (pm === "pix" || pm === "boleto") {
           try {
             sessionStorage.setItem(
               "pix_page_settings",
@@ -513,7 +513,7 @@ function CheckoutPageContent() {
           }
           markCompleted("pagamento");
           const dest =
-            paymentMethod === "boleto"
+            pm === "boleto"
               ? `/${storeSlug}/boleto/preview?preview=1`
               : `/${storeSlug}/pix/preview?preview=1`;
           router.push(dest);
@@ -528,7 +528,7 @@ function CheckoutPageContent() {
     let cardLast4: string | null = null;
     let installments = card.installments;
 
-    if (paymentMethod === "credit_card") {
+    if (pm === "credit_card") {
       const digitsOnly = card.number.replace(/\D+/g, "");
       const brand = getCardBrand(digitsOnly);
       const expectedCvvLength = cvvLengthForBrand(brand);
@@ -571,12 +571,12 @@ function CheckoutPageContent() {
         customer_email: customerEmail.trim(),
         customer_phone: customerPhone,
         customer_document: customerDocument,
-        payment_method: paymentMethod,
+        payment_method: pm,
         shipping_method_id: selectedShippingMethod?.id ?? null,
         shipping_address: address,
         order_bump_id: selectedOrderBump?.id ?? null,
       };
-      if (paymentMethod === "credit_card") {
+      if (pm === "credit_card") {
         payload.card_number = card.number.replace(/\D+/g, "");
         payload.card_holder = card.holder.trim().toUpperCase();
         payload.card_expiry = card.expiry;
@@ -621,7 +621,7 @@ function CheckoutPageContent() {
       }
 
       markCompleted("pagamento");
-      switch (res.payment_method ?? paymentMethod) {
+      switch (res.payment_method ?? pm) {
         case "boleto":
           router.push(`/${storeSlug}/boleto/${res.order_id}`);
           break;
@@ -980,6 +980,11 @@ function CheckoutPageContent() {
               sdkError={null}
               enabledMethods={enabledMethods}
               installmentConfig={installmentConfig}
+              orderBumps={data?.order_bumps ?? []}
+              selectedOrderBumpId={selectedOrderBumpId}
+              onToggleOrderBump={(id, sel) =>
+                setSelectedOrderBumpId(sel ? id : null)
+              }
             />
           </div>
 
@@ -1004,22 +1009,6 @@ function CheckoutPageContent() {
                 couponEnabled={settings.summary_coupon_enabled ?? true}
               />
             </div>
-
-            {/* ─── Order Bumps ─── */}
-            {visibleOrderBumps.length > 0 && (
-              <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-                {visibleOrderBumps.map((bump) => (
-                  <OrderBumpCard
-                    key={bump.id}
-                    bump={bump}
-                    selected={selectedOrderBumpId === bump.id}
-                    onToggle={(sel) =>
-                      setSelectedOrderBumpId(sel ? bump.id : null)
-                    }
-                  />
-                ))}
-              </div>
-            )}
 
             {(effectiveSettings.social_proofs_enabled ?? true) && (
               <div className="desktop-social-proofs" style={{ marginTop: 24 }}>
