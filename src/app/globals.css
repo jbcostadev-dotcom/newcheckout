@@ -111,10 +111,29 @@ body {
 }
 
 .step-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-size: 1.25rem;
   font-weight: 700;
   font-style: italic;
   color: var(--text-primary);
+}
+
+.step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  background: #000;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-style: normal;
+  line-height: 1;
 }
 
 .step-card-counter {

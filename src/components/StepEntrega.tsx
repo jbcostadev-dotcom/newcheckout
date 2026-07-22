@@ -137,7 +137,9 @@ export default function StepEntrega({
     return (
       <div className="step-card inactive">
         <div className="step-card-header">
-          <h2 className="step-card-title" style={{ fontSize: titleFontSize }}>Enviar para</h2>
+          <h2 className="step-card-title" style={{ fontSize: titleFontSize }}>
+            <span className="step-number">2</span> Enviar para
+          </h2>
           <button type="button" className="step-edit-btn" onClick={onEdit}>
             Editar{" "}
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -167,7 +169,9 @@ export default function StepEntrega({
     return (
       <div className="step-card inactive" style={{ opacity: 0.6 }}>
         <div className="step-card-header">
-          <h2 className="step-card-title" style={{ fontSize: titleFontSize }}>Entrega</h2>
+          <h2 className="step-card-title" style={{ fontSize: titleFontSize }}>
+            <span className="step-number">2</span> Entrega
+          </h2>
           <span className="step-card-counter">2 de 3</span>
         </div>
         <p className="step-card-subtitle">Informe o endereço de entrega</p>
@@ -179,7 +183,9 @@ export default function StepEntrega({
   return (
     <div className="step-card active">
       <div className="step-card-header">
-        <h2 className="step-card-title" style={{ fontSize: titleFontSize }}>Entrega</h2>
+        <h2 className="step-card-title" style={{ fontSize: titleFontSize }}>
+          <span className="step-number">2</span> Entrega
+        </h2>
         <span className="step-card-counter">2 de 3</span>
       </div>
       <p className="step-card-subtitle">Informe o endereço de entrega</p>
