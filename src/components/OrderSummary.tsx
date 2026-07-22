@@ -143,7 +143,16 @@ export default function OrderSummary({
               </button>
             </div>
           ) : showInput ? (
-            <form onSubmit={handleApply} style={{ display: "flex", gap: 8 }}>
+            <form
+              onSubmit={handleApply}
+              style={{
+                display: "flex",
+                gap: 8,
+                maxWidth: 240,
+                margin: "0 auto",
+                alignItems: "center",
+              }}
+            >
               <input
                 type="text"
                 value={couponInput}
@@ -152,12 +161,13 @@ export default function OrderSummary({
                 disabled={applyingCoupon}
                 style={{
                   flex: 1,
-                  padding: "10px 12px",
+                  minWidth: 0,
+                  padding: "8px 10px",
                   borderRadius: 8,
                   border: couponError ? "1px solid #d32f2f" : "1px solid var(--border-color)",
                   background: "var(--input-bg)",
                   color: "var(--text-primary)",
-                  fontSize: "0.9rem",
+                  fontSize: "0.82rem",
                   outline: "none",
                 }}
               />
@@ -165,18 +175,21 @@ export default function OrderSummary({
                 type="submit"
                 disabled={applyingCoupon || !couponInput.trim()}
                 style={{
-                  padding: "10px 16px",
+                  padding: "8px 12px",
                   borderRadius: 8,
                   border: "none",
                   background: "var(--green-primary)",
                   color: "#fff",
                   fontWeight: 600,
-                  fontSize: "0.85rem",
+                  fontSize: "0.78rem",
+                  lineHeight: 1,
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
                   cursor: applyingCoupon ? "not-allowed" : "pointer",
                   opacity: applyingCoupon || !couponInput.trim() ? 0.7 : 1,
                 }}
               >
-                {applyingCoupon ? "Aplicando..." : "Aplicar cupom"}
+                {applyingCoupon ? "Aplicando" : "Aplicar"}
               </button>
             </form>
           ) : (
@@ -190,7 +203,7 @@ export default function OrderSummary({
             </button>
           )}
           {couponError && (
-            <p style={{ marginTop: 6, fontSize: "0.75rem", color: "#d32f2f" }}>
+            <p style={{ marginTop: 6, fontSize: "0.75rem", color: "#d32f2f", textAlign: "center" }}>
               {couponError}
             </p>
           )}
