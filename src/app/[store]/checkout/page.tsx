@@ -423,14 +423,106 @@ function CheckoutPageContent() {
     }
   }, [customerEmail, address, getStoreIdentifier]);
 
+  // Rastreia o carrinho abandonado no backend (best-effort).
+  const trackAbandonedCart = useCallback(
+    (
+      step: "dados" | "entrega" | "pagamento" | "pagamento_tentado",
+      extra?: {
+        payment_method?: "pix" | "credit_card" | "boleto";
+        abandoned_reason?:
+          | "left_dados"
+          | "left_entrega"
+          | "left_pagamento"
+          | "card_refused"
+          | "pix_expired"
+          | "boleto_expired";
+        card_brand?: string | null;
+        card_last4?: string | null;
+      }
+    ) => {
+      const domain = getStoreIdentifier();
+      const email = customerEmail.trim();
+      const name = customerName.trim();
+      if (!email || name.length < 3 || groupedItems.length === 0) return;
+
+      const payload: Record<string, unknown> = {
+        domain,
+        step_reached: step,
+        customer_name: name,
+        customer_email: email,
+        customer_phone: customerPhone || null,
+        customer_document: customerDocument || null,
+        items: groupedItems.map((g) => ({
+          product_id: g.product.id,
+          name: g.product.name,
+          qty: g.qty,
+          unit_price: Number(g.product.price),
+        })),
+        subtotal,
+        total: displayTotal,
+      };
+
+      if (step !== "dados" && address.cep) {
+        payload.shipping_address = {
+          cep: address.cep,
+          logradouro: address.logradouro,
+          numero: address.numero,
+          complemento: address.complemento,
+          bairro: address.bairro,
+          cidade: address.cidade,
+          uf: address.uf,
+        };
+      }
+
+      if (selectedShippingMethod) {
+        payload.shipping_method_id = selectedShippingMethod.id;
+      }
+
+      if (extra?.payment_method) {
+        payload.payment_method = extra.payment_method;
+      }
+      if (extra?.abandoned_reason) {
+        payload.abandoned_reason = extra.abandoned_reason;
+      }
+      if (extra?.card_brand) {
+        payload.card_brand = extra.card_brand;
+      }
+      if (extra?.card_last4) {
+        payload.card_last4 = extra.card_last4;
+      }
+
+      try {
+        apiPost("/checkout/abandoned-cart", payload).catch(() => {
+          /* ignore: best-effort */
+        });
+      } catch {
+        /* ignore */
+      }
+    },
+    [
+      customerName,
+      customerEmail,
+      customerPhone,
+      customerDocument,
+      groupedItems,
+      subtotal,
+      displayTotal,
+      address,
+      selectedShippingMethod,
+      getStoreIdentifier,
+    ]
+  );
+
   const handleDadosContinue = () => {
     registerCustomer();
+    trackAbandonedCart("dados");
     markCompleted("dados");
     setStep("entrega");
   };
 
   const handleEntregaContinue = () => {
     updateCustomerAddress();
+    trackAbandonedCart("entrega");
     markCompleted("entrega");
     setStep("pagamento");
   };
@@ -438,6 +530,13 @@ function CheckoutPageContent() {
   const handleEditStep = (s: StepId) => {
     setStep(s);
   };
+
+  // Rastreia quando o cliente alcança a etapa de pagamento.
+  useEffect(() => {
+    if (step === "pagamento") {
+      trackAbandonedCart("pagamento", { payment_method: paymentMethod });
+    }
+  }, [step, paymentMethod, trackAbandonedCart]);
 
   const handleApplyCoupon = async (code: string) => {
     if (!data) return;
@@ -698,6 +797,12 @@ function CheckoutPageContent() {
           setPaymentMethod("pix");
         } else if (isRefused) {
           setModalCardRefused(true);
+          trackAbandonedCart("pagamento_tentado", {
+            payment_method: "credit_card",
+            abandoned_reason: "card_refused",
+            card_brand: getCardBrand(card.number.replace(/\D+/g, "")),
+            card_last4: card.number.replace(/\D+/g, "").slice(-4) || null,
+          });
         } else {
           alert(err.message || "Erro ao processar pagamento.");
         }
