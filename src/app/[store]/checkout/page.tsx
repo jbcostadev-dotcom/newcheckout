@@ -990,7 +990,7 @@ function CheckoutPageContent() {
           </div>
 
           {/* ─── Column 3: Order Summary ─── */}
-          <div style={{ position: "sticky", top: 24, alignSelf: "start" }}>
+          <div className="checkout-summary-col" style={{ position: "sticky", top: 24 }}>
             <div
               style={{
                 background: "var(--card-bg)",
@@ -1069,6 +1069,10 @@ function CheckoutPageContent() {
           font-size: ${stepTitleSize} !important;
         }
 
+        .checkout-summary-col {
+          align-self: start;
+        }
+
         .desktop-social-proofs {
           display: block;
         }
@@ -1100,6 +1104,9 @@ function CheckoutPageContent() {
           .checkout-main > div:last-child {
             position: static !important;
             order: -1 !important;
+          }
+          .checkout-summary-col {
+            align-self: stretch !important;
           }
           .desktop-social-proofs {
             display: none !important;
