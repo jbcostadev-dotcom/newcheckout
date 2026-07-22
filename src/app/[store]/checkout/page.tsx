@@ -1069,10 +1069,6 @@ function CheckoutPageContent() {
           font-size: ${stepTitleSize} !important;
         }
 
-        .checkout-summary-col {
-          align-self: start;
-        }
-
         .desktop-social-proofs {
           display: block;
         }
