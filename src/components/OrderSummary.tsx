@@ -148,8 +148,7 @@ export default function OrderSummary({
               style={{
                 display: "flex",
                 gap: 8,
-                maxWidth: 240,
-                margin: "0 auto",
+                maxWidth: 300,
                 alignItems: "center",
               }}
             >
@@ -189,7 +188,7 @@ export default function OrderSummary({
                   opacity: applyingCoupon || !couponInput.trim() ? 0.7 : 1,
                 }}
               >
-                {applyingCoupon ? "Aplicando" : "Aplicar"}
+                {applyingCoupon ? "Aplicando..." : "Aplicar cupom"}
               </button>
             </form>
           ) : (
