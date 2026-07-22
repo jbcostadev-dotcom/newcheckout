@@ -58,6 +58,7 @@ export default function OrderSummary({
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            width: "100%",
             cursor: "pointer",
             marginBottom: showContent ? 16 : 0,
           }}
@@ -66,7 +67,7 @@ export default function OrderSummary({
             <span style={{ fontSize: "1.1rem", fontWeight: 700 }}>Seu carrinho</span>
             <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>Informações da sua compra</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto", flexShrink: 0 }}>
             <span style={{ fontSize: "1.1rem", fontWeight: 700 }}>{formatCurrency(finalTotal)}</span>
             <svg
               width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
