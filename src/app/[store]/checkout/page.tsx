@@ -3,6 +3,7 @@
 import React, { Suspense, useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { apiGet, apiPost, ApiError } from "@/lib/api";
+import type { ValidatedCoupon } from "@/types";
 import ErrorModal from "@/components/ErrorModal";
 import {
   cpfIsValid,
@@ -163,6 +164,11 @@ function CheckoutPageContent() {
   const [selectedShippingMethod, setSelectedShippingMethod] = useState<ShippingMethod | null>(null);
 
   const [selectedOrderBumpId, setSelectedOrderBumpId] = useState<number | null>(null);
+
+  const [appliedCoupon, setAppliedCoupon] = useState<ValidatedCoupon | null>(null);
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
 
   const [card, setCard] = useState<CardData>({
     number: "",
@@ -337,12 +343,18 @@ function CheckoutPageContent() {
     ) {
       return 0;
     }
+    if (
+      appliedCoupon?.coupon.free_shipping &&
+      appliedCoupon.coupon.shipping_method_id === selectedShippingMethod.id
+    ) {
+      return 0;
+    }
     return selectedShippingMethod.price;
-  }, [selectedShippingMethod, subtotal]);
+  }, [selectedShippingMethod, subtotal, appliedCoupon]);
 
   const subtotalWithBump = subtotal + orderBumpPrice;
 
-  const displayTotal = subtotalWithBump + shippingPrice;
+  const displayTotal = subtotalWithBump + shippingPrice - couponDiscount;
 
   // Itens exibidos no resumo pedidos: produtos normais + order bump selecionado.
   const summaryItems: GroupedItem[] = useMemo(() => {
@@ -425,6 +437,45 @@ function CheckoutPageContent() {
 
   const handleEditStep = (s: StepId) => {
     setStep(s);
+  };
+
+  const handleApplyCoupon = async (code: string) => {
+    if (!data) return;
+    setApplyingCoupon(true);
+    setCouponError(null);
+    try {
+      const domain = getStoreIdentifier();
+      const productIds = productsParam
+        .split(",")
+        .map((s) => parseInt(s.trim(), 10))
+        .filter((n) => !isNaN(n))
+        .join(",");
+      const res = await apiGet<ValidatedCoupon>(
+        `/checkout/coupon?domain=${encodeURIComponent(domain)}&product_ids=${encodeURIComponent(productIds)}&code=${encodeURIComponent(code)}`
+      );
+      setAppliedCoupon(res);
+
+      const base = subtotalWithBump + shippingPrice;
+      let discount = 0;
+      if (res.coupon.discount_type === "percent") {
+        discount = base * (res.coupon.discount_value / 100);
+      } else {
+        discount = res.coupon.discount_value;
+      }
+      setCouponDiscount(Math.min(discount, base));
+    } catch (err) {
+      setAppliedCoupon(null);
+      setCouponDiscount(0);
+      setCouponError(err instanceof Error ? err.message : "Erro ao aplicar cupom.");
+    } finally {
+      setApplyingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponDiscount(0);
+    setCouponError(null);
   };
 
   const handlePayment = async (method?: "pix" | "credit_card" | "boleto") => {
@@ -1003,11 +1054,16 @@ function CheckoutPageContent() {
                 items={summaryItems}
                 subtotal={subtotalWithBump}
                 shipping={shippingPrice}
-                total={displayTotal}
-                discount={step === "pagamento" ? discountValue : 0}
+                total={subtotalWithBump + shippingPrice}
+                discount={couponDiscount + (step === "pagamento" ? discountValue : 0)}
                 title={settings.summary_title || "Resumo do pedido"}
                 showDiscount={settings.summary_show_discount ?? true}
                 couponEnabled={settings.summary_coupon_enabled ?? true}
+                onApplyCoupon={handleApplyCoupon}
+                onRemoveCoupon={handleRemoveCoupon}
+                appliedCoupon={appliedCoupon}
+                applyingCoupon={applyingCoupon}
+                couponError={couponError}
               />
             </div>
 

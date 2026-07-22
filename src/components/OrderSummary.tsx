@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { formatCurrency } from "@/lib/utils";
-import type { CheckoutProduct } from "@/types";
+import type { CheckoutProduct, ValidatedCoupon } from "@/types";
 
 export interface GroupedItem {
   product: CheckoutProduct;
@@ -19,8 +19,12 @@ interface OrderSummaryProps {
   title?: string;
   showDiscount?: boolean;
   couponEnabled?: boolean;
+  onApplyCoupon?: (code: string) => Promise<void>;
+  onRemoveCoupon?: () => void;
+  appliedCoupon?: ValidatedCoupon | null;
+  applyingCoupon?: boolean;
+  couponError?: string | null;
 }
-
 
 export default function OrderSummary({
   items,
@@ -32,21 +36,35 @@ export default function OrderSummary({
   title = "Resumo do pedido",
   showDiscount = true,
   couponEnabled = true,
+  onApplyCoupon,
+  onRemoveCoupon,
+  appliedCoupon,
+  applyingCoupon = false,
+  couponError = null,
 }: OrderSummaryProps) {
   const finalTotal = total - discount;
   const productTotal = subtotal !== undefined ? subtotal : total - shipping;
 
   const [isExpanded, setIsExpanded] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [couponInput, setCouponInput] = useState("");
+  const [showInput, setShowInput] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
-    handleResize(); // Check initially
+    handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const showContent = !isMobile || isExpanded;
+
+  const handleApply = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!couponInput.trim() || !onApplyCoupon) return;
+    await onApplyCoupon(couponInput.trim().toUpperCase());
+    setCouponInput("");
+  };
 
   return (
     <div style={{ width: "100%" }}>
@@ -87,12 +105,96 @@ export default function OrderSummary({
 
       {/* Content wrapper */}
       <div style={{ display: showContent ? "block" : "none" }}>
-      {/* Coupon link */}
+      {/* Coupon */}
       {couponEnabled && (
-        <button type="button" className="coupon-link" style={{ marginBottom: 16 }}>
-          <span>🎟️</span>
-          Inserir cupom de desconto
-        </button>
+        <div style={{ marginBottom: 16 }}>
+          {appliedCoupon ? (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "10px 12px",
+                borderRadius: 8,
+                border: "1px dashed var(--green-primary)",
+                background: "rgba(46, 125, 50, 0.06)",
+              }}
+            >
+              <div>
+                <p style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--green-primary)" }}>
+                  Cupom {appliedCoupon.coupon.code} aplicado
+                </p>
+                <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                  {appliedCoupon.coupon.name}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onRemoveCoupon}
+                style={{
+                  fontSize: "0.75rem",
+                  color: "#d32f2f",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Remover
+              </button>
+            </div>
+          ) : showInput ? (
+            <form onSubmit={handleApply} style={{ display: "flex", gap: 8 }}>
+              <input
+                type="text"
+                value={couponInput}
+                onChange={(e) => setCouponInput(e.target.value)}
+                placeholder="Digite um cupom"
+                disabled={applyingCoupon}
+                style={{
+                  flex: 1,
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  border: couponError ? "1px solid #d32f2f" : "1px solid var(--border-color)",
+                  background: "var(--input-bg)",
+                  color: "var(--text-primary)",
+                  fontSize: "0.9rem",
+                  outline: "none",
+                }}
+              />
+              <button
+                type="submit"
+                disabled={applyingCoupon || !couponInput.trim()}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: "var(--green-primary)",
+                  color: "#fff",
+                  fontWeight: 600,
+                  fontSize: "0.85rem",
+                  cursor: applyingCoupon ? "not-allowed" : "pointer",
+                  opacity: applyingCoupon || !couponInput.trim() ? 0.7 : 1,
+                }}
+              >
+                {applyingCoupon ? "Aplicando..." : "Aplicar cupom"}
+              </button>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowInput(true)}
+              className="coupon-link"
+            >
+              <span>🎟️</span>
+              Inserir cupom de desconto
+            </button>
+          )}
+          {couponError && (
+            <p style={{ marginTop: 6, fontSize: "0.75rem", color: "#d32f2f" }}>
+              {couponError}
+            </p>
+          )}
+        </div>
       )}
 
       {/* Price breakdown */}

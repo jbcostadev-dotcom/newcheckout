@@ -138,6 +138,19 @@ export interface CardData {
   installments: number;
 }
 
+export interface ValidatedCoupon {
+  valid: boolean;
+  coupon: {
+    id: number;
+    code: string;
+    name: string;
+    discount_type: "fixed" | "percent";
+    discount_value: number;
+    free_shipping: boolean;
+    shipping_method_id?: number | null;
+  };
+}
+
 export interface CheckoutProcessResponse {
   order_id?: number;
   status?: string;
