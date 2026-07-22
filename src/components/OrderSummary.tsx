@@ -49,7 +49,7 @@ export default function OrderSummary({
   const showContent = !isMobile || isExpanded;
 
   return (
-    <div>
+    <div style={{ width: "100%" }}>
       {/* Title / Mobile Header */}
       {isMobile ? (
         <div
@@ -57,7 +57,7 @@ export default function OrderSummary({
           style={{
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "center",
+            alignItems: "flex-start",
             width: "100%",
             cursor: "pointer",
             marginBottom: showContent ? 16 : 0,
