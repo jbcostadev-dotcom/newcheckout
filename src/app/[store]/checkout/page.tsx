@@ -647,6 +647,7 @@ function CheckoutPageContent() {
               "pix_page_settings",
               JSON.stringify({
                 logo_url: data?.store.settings.logo_url,
+                pix_confirmation_logo: data?.store.settings.pix_confirmation_logo,
                 header_store_name_visible: data?.store.settings.header_store_name_visible,
                 header_secure_badge: data?.store.settings.header_secure_badge,
                 header_logo_alignment: data?.store.settings.header_logo_alignment,

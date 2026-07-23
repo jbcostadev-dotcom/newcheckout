@@ -8,6 +8,7 @@ const PIX_EXPIRATION_MINUTES = 30;
 
 export interface PixPaymentSettings {
   logo_url?: string | null;
+  pix_confirmation_logo?: string | null;
   header_store_name_visible?: boolean;
   header_secure_badge?: boolean;
   header_logo_alignment?: string;
@@ -172,16 +173,18 @@ export default function PixPaymentView({
   const logoAlign = settings.header_logo_alignment || "left";
   const iconColor = settings.header_icon_color || "var(--text-secondary)";
 
+  const displayLogoUrl = settings.pix_confirmation_logo || settings.logo_url;
+
   const LogoContent = (
     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-      {settings.logo_url && (
+      {displayLogoUrl && (
         <img
-          src={settings.logo_url}
+          src={displayLogoUrl}
           alt=""
           style={{ height: 32, borderRadius: 4, objectFit: "contain" }}
         />
       )}
-      {showStoreName && !settings.logo_url && (
+      {showStoreName && !displayLogoUrl && (
         <h1 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--text-primary)" }}>
           {storeName}
         </h1>
