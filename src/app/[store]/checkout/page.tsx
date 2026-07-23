@@ -1205,11 +1205,7 @@ function CheckoutPageContent() {
         onClose={() => setModalCardLimit(false)}
       />
 
-      <Footer
-        footer_text={settings.footer_text}
-        footer_show_cnpj={settings.footer_show_cnpj}
-        footer_cnpj={settings.footer_cnpj}
-      />
+      <Footer settings={settings} storeName={data?.store?.name} />
 
       {/* ─── Google Font Loader ─── */}
       {settings.font_family && settings.font_family !== "Inter" && (
