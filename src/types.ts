@@ -223,6 +223,7 @@ export interface UpsellOfferResponse {
   has_upsell: boolean;
   upsell: UpsellOffer | null;
   order: UpsellOrderInfo;
+  installment_config?: InstallmentConfig | null;
 }
 
 export interface UpsellChargeResponse {

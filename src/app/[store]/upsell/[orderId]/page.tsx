@@ -7,6 +7,7 @@ import { apiGet, apiPost } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import type {
   ConfirmedOrderResponse,
+  InstallmentConfig,
   UpsellChargeResponse,
   UpsellOffer,
   UpsellOfferResponse,
@@ -15,6 +16,32 @@ import type {
 function formatCardBrand(brand?: string | null): string {
   if (!brand) return "";
   return brand.toUpperCase();
+}
+
+function buildInstallmentOptions(total: number, config?: InstallmentConfig | null) {
+  const limit = config?.limit ?? 12;
+  const interestFree = config?.interest_free ?? 1;
+  const options: { value: number; label: string }[] = [];
+
+  for (let i = 1; i <= limit; i++) {
+    let rate = 0;
+    if (config && i > interestFree) {
+      if (config.type === "custom") {
+        rate = config.rates?.[i - 1] ?? 0;
+      } else {
+        rate = config.default_rate ?? 0;
+      }
+    }
+    const totalWithInterest = total * Math.pow(1 + rate / 100, i);
+    const installmentValue = totalWithInterest / i;
+    const rateLabel = rate > 0 ? ` (${rate.toString().replace(".", ",")}% a.m.)` : " (sem juros)";
+    options.push({
+      value: i,
+      label: `${i}x de ${formatCurrency(installmentValue)}${rateLabel}`,
+    });
+  }
+
+  return options;
 }
 
 function UpsellContent() {
@@ -34,6 +61,7 @@ function UpsellContent() {
   const [pixPolling, setPixPolling] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<Record<string, string>>({});
   const [installments, setInstallments] = useState<number>(1);
+  const [installmentConfig, setInstallmentConfig] = useState<InstallmentConfig | null>(null);
   const getStoreIdentifier = useCallback((): string => {
     const hostname = window.location.hostname;
     const baseDomain =
@@ -54,6 +82,11 @@ function UpsellContent() {
   }, [storeSlug]);
 
   const domain = useMemo(() => getStoreIdentifier(), [getStoreIdentifier]);
+
+  const installmentOptions = useMemo(() => {
+    if (!offer) return [];
+    return buildInstallmentOptions(offer.product.upsell_price, installmentConfig);
+  }, [offer, installmentConfig]);
 
   const [settings, setSettings] = useState<{
     primary_color?: string;
@@ -133,6 +166,10 @@ function UpsellContent() {
 
         setOffer(res.upsell);
         setOrderInfo(res.order);
+        if (res.installment_config) {
+          setInstallmentConfig(res.installment_config);
+          setInstallments(res.installment_config.pre_selected ?? 1);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erro ao carregar oferta.");
       } finally {
@@ -501,7 +538,7 @@ function UpsellContent() {
                       </select>
                     </div>
 
-                    {orderInfo.payment_method === "credit_card" && (
+                    {orderInfo.payment_method === "credit_card" && installmentOptions.length > 0 && (
                       <div>
                         <label style={{ fontSize: "0.85rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>
                           Nº de Parcelas
@@ -519,13 +556,8 @@ function UpsellContent() {
                             fontSize: "0.95rem",
                           }}
                         >
-                          {[
-                            { value: "1", label: "1x sem juros" },
-                            { value: "2", label: "2x sem juros" },
-                            { value: "3", label: "3x sem juros" },
-                            { value: "6", label: "6x sem juros" },
-                          ].map((i) => (
-                            <option key={i.value} value={i.value}>{i.label}</option>
+                          {installmentOptions.map((i) => (
+                            <option key={i.value} value={String(i.value)}>{i.label}</option>
                           ))}
                         </select>
                       </div>
