@@ -194,6 +194,7 @@ export interface UpsellProduct {
   image_url?: string | null;
   original_price: number;
   upsell_price: number;
+  attributes?: { name: string; value: string }[] | null;
 }
 
 export interface UpsellOffer {

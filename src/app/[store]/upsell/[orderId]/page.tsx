@@ -59,7 +59,6 @@ function UpsellContent() {
   const [pixResult, setPixResult] = useState<UpsellChargeResponse | null>(null);
   const [pixQrUrl, setPixQrUrl] = useState<string | null>(null);
   const [pixPolling, setPixPolling] = useState(false);
-  const [selectedVariant, setSelectedVariant] = useState<Record<string, string>>({});
   const [installments, setInstallments] = useState<number>(1);
   const [installmentConfig, setInstallmentConfig] = useState<InstallmentConfig | null>(null);
   const getStoreIdentifier = useCallback((): string => {
@@ -228,7 +227,6 @@ function UpsellContent() {
         domain,
         order_id: orderId,
         upsell_id: offer.id,
-        variant_attributes: selectedVariant,
         installments,
       });
 
@@ -250,7 +248,7 @@ function UpsellContent() {
     } finally {
       setCharging(false);
     }
-  }, [offer, orderId, domain, router, selectedVariant]);
+  }, [offer, orderId, domain, router, installments]);
 
   const handleDecline = useCallback(async () => {
     setDeclining(true);
@@ -513,30 +511,36 @@ function UpsellContent() {
                     {formatCurrency(offer.product.upsell_price)}
                   </p>
 
-                  {/* Variant selectors (mock/example) */}
+                  {/* Atributos / variação do produto */}
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <div>
-                      <label style={{ fontSize: "0.85rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>
-                        Tamanho
-                      </label>
-                      <select
-                        value={selectedVariant["size"] ?? "P"}
-                        onChange={(e) => setSelectedVariant((prev) => ({ ...prev, size: e.target.value }))}
-                        style={{
-                          width: "100%",
-                          padding: "10px 12px",
-                          borderRadius: 8,
-                          border: "1px solid var(--border-color)",
-                          background: "var(--card-bg)",
+                    {offer.product.attributes && offer.product.attributes.length > 0 && (
+                      <div>
+                        <label style={{ fontSize: "0.85rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>
+                          Variação
+                        </label>
+                        <div style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 8,
+                          fontSize: "0.9rem",
                           color: "var(--text-primary)",
-                          fontSize: "0.95rem",
-                        }}
-                      >
-                        {["P", "M", "G", "GG"].map((s) => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
-                    </div>
+                        }}>
+                          {offer.product.attributes.map((attr, idx) => (
+                            <span
+                              key={idx}
+                              style={{
+                                padding: "4px 10px",
+                                borderRadius: 6,
+                                background: "var(--checkout-bg)",
+                                border: "1px solid var(--border-color)",
+                              }}
+                            >
+                              {attr.name}: {attr.value}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {orderInfo.payment_method === "credit_card" && installmentOptions.length > 0 && (
                       <div>
