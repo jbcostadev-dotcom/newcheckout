@@ -24,23 +24,47 @@ export default function Footer({ settings, storeName }: { settings: any; storeNa
   const bgColor = footer_background_color || "var(--checkout-bg)";
   const iconColor = footer_icon_color || "#000000";
 
+  const paymentMethods = [
+    { name: "American Express", src: "/icons/pay-methods/american-express.svg" },
+    { name: "Diners", src: "/icons/pay-methods/diners.svg" },
+    { name: "Discover", src: "/icons/pay-methods/discover.svg" },
+    { name: "Elo", src: "/icons/pay-methods/elo.svg" },
+    { name: "Hiper", src: "/icons/pay-methods/hiper.svg" },
+    { name: "Hipercard", src: "/icons/pay-methods/hipercard.svg" },
+    { name: "Mastercard", src: "/icons/pay-methods/mastercard.svg" },
+    { name: "Visa", src: "/icons/pay-methods/visa.svg" },
+    { name: "Pix", src: "/icons/pay-methods/pix.svg" },
+    { name: "Boleto", src: "/icons/pay-methods/boleto.svg" },
+  ];
+
   const PaymentIcons = () => (
     <div style={{ display: "flex", gap: "8px", justifyContent: "center", flexWrap: "wrap", marginBottom: "16px" }}>
-      {["Amex", "Elo", "Hipercard", "Mastercard", "Visa", "Pix"].map(brand => (
-        <div key={brand} style={{ 
-          border: "1px solid #ddd", 
-          borderRadius: "4px", 
-          padding: "4px 8px", 
-          fontSize: "10px", 
-          fontWeight: "bold",
-          color: iconColor,
-          background: "#fff",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minWidth: "40px"
-        }}>
-          {brand}
+      {paymentMethods.map(method => (
+        <div
+          key={method.name}
+          title={method.name}
+          style={{
+            border: "1px solid #ddd",
+            borderRadius: "4px",
+            padding: "4px",
+            background: "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minWidth: "40px",
+            height: "28px",
+          }}
+        >
+          <img
+            src={method.src}
+            alt={method.name}
+            style={{
+              maxWidth: "100%",
+              maxHeight: "100%",
+              objectFit: "contain",
+              display: "block",
+            }}
+          />
         </div>
       ))}
     </div>
