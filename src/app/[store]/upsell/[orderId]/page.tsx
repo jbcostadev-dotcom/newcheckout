@@ -11,6 +11,7 @@ import type {
   UpsellChargeResponse,
   UpsellOffer,
   UpsellOfferResponse,
+  UpsellProductVariant,
 } from "@/types";
 
 function formatCardBrand(brand?: string | null): string {
@@ -44,6 +45,56 @@ function buildInstallmentOptions(total: number, config?: InstallmentConfig | nul
   return options;
 }
 
+type AttributeOptionMap = Record<string, string[]>;
+
+function getAttributeOptions(variants?: UpsellProductVariant[] | null): AttributeOptionMap {
+  if (!variants || variants.length === 0) return {};
+  const options: AttributeOptionMap = {};
+  for (const variant of variants) {
+    for (const attr of variant.attributes ?? []) {
+      if (!attr?.name) continue;
+      if (!options[attr.name]) options[attr.name] = [];
+      if (!options[attr.name].includes(attr.value)) {
+        options[attr.name].push(attr.value);
+      }
+    }
+  }
+  return options;
+}
+
+function findMatchingVariant(
+  variants: UpsellProductVariant[],
+  selected: Record<string, string>,
+  changedName?: string
+): UpsellProductVariant | null {
+  if (variants.length === 0) return null;
+
+  const exact = variants.find((variant) =>
+    Object.entries(selected).every(([name, value]) =>
+      variant.attributes?.some((attr) => attr.name === name && attr.value === value)
+    )
+  );
+  if (exact) return exact;
+
+  if (changedName) {
+    const changedValue = selected[changedName];
+    const partial = variants.find((variant) =>
+      variant.attributes?.some((attr) => attr.name === changedName && attr.value === changedValue)
+    );
+    if (partial) return partial;
+  }
+
+  return variants[0];
+}
+
+function variantAttributesToMap(variant?: UpsellProductVariant | null): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const attr of variant?.attributes ?? []) {
+    if (attr?.name) map[attr.name] = attr.value;
+  }
+  return map;
+}
+
 function UpsellContent() {
   const params = useParams();
   const router = useRouter();
@@ -53,6 +104,8 @@ function UpsellContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [offer, setOffer] = useState<UpsellOffer | null>(null);
+  const [selectedVariant, setSelectedVariant] = useState<UpsellProductVariant | null>(null);
+  const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
   const [orderInfo, setOrderInfo] = useState<{ payment_method: string; card_brand?: string | null; card_last4?: string | null } | null>(null);
   const [charging, setCharging] = useState(false);
   const [declining, setDeclining] = useState(false);
@@ -164,6 +217,14 @@ function UpsellContent() {
         }
 
         setOffer(res.upsell);
+        const variants = res.upsell.product.variants ?? [];
+        const attributeOptions = getAttributeOptions(variants);
+        const initialAttributes: Record<string, string> = {};
+        for (const [name, values] of Object.entries(attributeOptions)) {
+          initialAttributes[name] = values[0] ?? "";
+        }
+        setSelectedAttributes(initialAttributes);
+        setSelectedVariant(findMatchingVariant(variants, initialAttributes));
         setOrderInfo(res.order);
         if (res.installment_config) {
           setInstallmentConfig(res.installment_config);
@@ -228,7 +289,8 @@ function UpsellContent() {
         order_id: orderId,
         upsell_id: offer.id,
         installments,
-        variant_attributes: offer.product.attributes ?? null,
+        variant_id: selectedVariant?.id ?? offer.product.id,
+        variant_attributes: selectedVariant?.attributes ?? offer.product.attributes ?? null,
       });
 
       if (!res.success) {
@@ -249,7 +311,7 @@ function UpsellContent() {
     } finally {
       setCharging(false);
     }
-  }, [offer, orderId, domain, router, installments]);
+  }, [offer, orderId, domain, router, installments, selectedVariant]);
 
   const handleDecline = useCallback(async () => {
     setDeclining(true);
@@ -514,34 +576,82 @@ function UpsellContent() {
 
                   {/* Atributos / variação do produto */}
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    {offer.product.attributes && offer.product.attributes.length > 0 && (
-                      <div>
-                        <label style={{ fontSize: "0.85rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>
-                          Variação
-                        </label>
-                        <div style={{
-                          display: "flex",
-                          flexWrap: "wrap",
-                          gap: 8,
-                          fontSize: "0.9rem",
-                          color: "var(--text-primary)",
-                        }}>
-                          {offer.product.attributes.map((attr, idx) => (
-                            <span
-                              key={idx}
+                    {(() => {
+                      const attributeOptions = getAttributeOptions(offer.product.variants);
+                      const hasAttributes = Object.keys(attributeOptions).length > 0;
+
+                      if (hasAttributes) {
+                        return Object.entries(attributeOptions).map(([attrName, values]) => (
+                          <div key={attrName}>
+                            <label style={{ fontSize: "0.85rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>
+                              {attrName}
+                            </label>
+                            <select
+                              value={selectedAttributes[attrName] ?? ""}
+                              onChange={(e) => {
+                                const newValue = e.target.value;
+                                const next = { ...selectedAttributes, [attrName]: newValue };
+                                const variants = offer.product.variants ?? [];
+                                const matched = findMatchingVariant(variants, next, attrName);
+                                setSelectedVariant(matched);
+                                setSelectedAttributes(matched ? variantAttributesToMap(matched) : next);
+                              }}
                               style={{
-                                padding: "4px 10px",
-                                borderRadius: 6,
-                                background: "var(--checkout-bg)",
+                                width: "100%",
+                                padding: "10px 12px",
+                                borderRadius: 8,
                                 border: "1px solid var(--border-color)",
+                                background: "var(--card-bg)",
+                                color: "var(--text-primary)",
+                                fontSize: "0.95rem",
                               }}
                             >
-                              {attr.name}: {attr.value}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                              {values.map((value) => (
+                                <option key={value} value={value}>
+                                  {value}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ));
+                      }
+
+                      if ((offer.product.variants ?? []).length > 1) {
+                        return (
+                          <div>
+                            <label style={{ fontSize: "0.85rem", color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>
+                              Variação
+                            </label>
+                            <select
+                              value={selectedVariant?.id ?? offer.product.id}
+                              onChange={(e) => {
+                                const id = Number(e.target.value);
+                                const variant = offer.product.variants?.find((v) => v.id === id) ?? null;
+                                setSelectedVariant(variant);
+                                setSelectedAttributes(variantAttributesToMap(variant));
+                              }}
+                              style={{
+                                width: "100%",
+                                padding: "10px 12px",
+                                borderRadius: 8,
+                                border: "1px solid var(--border-color)",
+                                background: "var(--card-bg)",
+                                color: "var(--text-primary)",
+                                fontSize: "0.95rem",
+                              }}
+                            >
+                              {(offer.product.variants ?? []).map((variant) => (
+                                <option key={variant.id} value={variant.id}>
+                                  {variant.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        );
+                      }
+
+                      return null;
+                    })()}
 
                     {orderInfo.payment_method === "credit_card" && installmentOptions.length > 0 && (
                       <div>

@@ -188,6 +188,14 @@ export interface PixStatusResponse {
   has_upsell?: boolean;
 }
 
+export interface UpsellProductVariant {
+  id: number;
+  name: string;
+  price: number;
+  image_url?: string | null;
+  attributes?: { name: string; value: string }[] | null;
+}
+
 export interface UpsellProduct {
   id: number;
   name: string;
@@ -195,6 +203,7 @@ export interface UpsellProduct {
   original_price: number;
   upsell_price: number;
   attributes?: { name: string; value: string }[] | null;
+  variants?: UpsellProductVariant[] | null;
 }
 
 export interface UpsellOffer {
