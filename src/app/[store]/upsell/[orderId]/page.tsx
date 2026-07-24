@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import QRCode from "qrcode";
 import { apiGet, apiPost } from "@/lib/api";
@@ -34,6 +34,27 @@ function UpsellContent() {
   const [pixPolling, setPixPolling] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<Record<string, string>>({});
   const [installments, setInstallments] = useState<number>(1);
+  const getStoreIdentifier = useCallback((): string => {
+    const hostname = window.location.hostname;
+    const baseDomain =
+      process.env.NEXT_PUBLIC_CHECKOUT_BASE_DOMAIN || "bersenker.shop";
+    const checkoutAppDomain =
+      process.env.NEXT_PUBLIC_CHECKOUT_APP_DOMAIN || `checkout.${baseDomain}`;
+
+    if (hostname === checkoutAppDomain || hostname === `www.${checkoutAppDomain}`) {
+      return storeSlug;
+    }
+
+    if (hostname.endsWith(`.${baseDomain}`)) {
+      const sub = hostname.replace(`.${baseDomain}`, "");
+      if (sub && sub !== checkoutAppDomain.split(".")[0]) return sub;
+    }
+
+    return hostname;
+  }, [storeSlug]);
+
+  const domain = useMemo(() => getStoreIdentifier(), [getStoreIdentifier]);
+
   const [settings, setSettings] = useState<{
     primary_color?: string;
     dark_mode?: boolean;
@@ -91,8 +112,6 @@ function UpsellContent() {
     }
   }, [settings]);
 
-  const domain = typeof window !== "undefined" ? window.location.hostname : storeSlug;
-
   useEffect(() => {
     if (!orderId || isNaN(orderId)) {
       setError("Pedido inválido.");
@@ -102,8 +121,9 @@ function UpsellContent() {
 
     const fetchOffer = async () => {
       try {
+        const d = getStoreIdentifier();
         const res = await apiGet<UpsellOfferResponse>(
-          `/checkout/upsell?domain=${encodeURIComponent(domain)}&order_id=${orderId}`
+          `/checkout/upsell?domain=${encodeURIComponent(d)}&order_id=${orderId}`
         );
 
         if (!res.has_upsell || !res.upsell) {
@@ -121,7 +141,7 @@ function UpsellContent() {
     };
 
     fetchOffer();
-  }, [orderId, domain, router, storeSlug]);
+  }, [orderId, getStoreIdentifier, router, storeSlug]);
 
   // Gera QR code quando retorna novo PIX
   useEffect(() => {
