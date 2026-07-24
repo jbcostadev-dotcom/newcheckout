@@ -228,6 +228,7 @@ function UpsellContent() {
         order_id: orderId,
         upsell_id: offer.id,
         installments,
+        variant_attributes: offer.product.attributes ?? null,
       });
 
       if (!res.success) {
