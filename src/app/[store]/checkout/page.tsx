@@ -773,7 +773,11 @@ function CheckoutPageContent() {
       // Status pagos imediatamente (cartão autorizado/pago).
       if (res.status === "paid" || res.status === "authorized") {
         markCompleted("pagamento");
-        router.push(`/${storeSlug}/confirmed/${res.order_id}`);
+        if (res.has_upsell && res.payment_method === "credit_card") {
+          router.push(`/${storeSlug}/upsell/${res.order_id}`);
+        } else {
+          router.push(`/${storeSlug}/confirmed/${res.order_id}`);
+        }
         return;
       }
 

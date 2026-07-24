@@ -166,6 +166,7 @@ export interface CheckoutProcessResponse {
   card_last4?: string | null;
   installments?: number;
   gateway_expires_at?: string | null;
+  has_upsell?: boolean;
 }
 
 export interface PixStatusResponse {
@@ -184,6 +185,56 @@ export interface PixStatusResponse {
   gateway_expires_at?: string | null;
   created_at?: string | null;
   store_name?: string | null;
+  has_upsell?: boolean;
+}
+
+export interface UpsellProduct {
+  id: number;
+  name: string;
+  image_url?: string | null;
+  original_price: number;
+  upsell_price: number;
+}
+
+export interface UpsellOffer {
+  id: number;
+  name: string;
+  product_id: number;
+  product: UpsellProduct;
+  discount_type: "fixed" | "percent";
+  discount_value: number;
+  offer_title: string | null;
+  offer_message: string | null;
+  button_label: string;
+  bg_color: string;
+  border_color: string;
+  button_color: string;
+  button_text_color: string;
+}
+
+export interface UpsellOrderInfo {
+  id: number;
+  payment_method: string;
+  card_brand?: string | null;
+  card_last4?: string | null;
+}
+
+export interface UpsellOfferResponse {
+  has_upsell: boolean;
+  upsell: UpsellOffer | null;
+  order: UpsellOrderInfo;
+}
+
+export interface UpsellChargeResponse {
+  success: boolean;
+  message?: string;
+  pix_qrcode?: string | null;
+  pix_copia_cola?: string | null;
+  gateway_expires_at?: string | null;
+}
+
+export interface UpsellDeclineResponse {
+  success: boolean;
 }
 
 export interface ConfirmedOrderItem {
