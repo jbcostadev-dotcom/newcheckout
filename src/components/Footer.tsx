@@ -8,6 +8,12 @@ export default function Footer({ settings, storeName }: { settings: any; storeNa
     footer_show_payment_methods = true,
     footer_show_cnpj = false,
     footer_cnpj,
+    footer_show_contact_email = false,
+    footer_contact_email,
+    footer_show_whatsapp = false,
+    footer_whatsapp,
+    footer_show_address = false,
+    footer_address,
     footer_show_terms = false,
     footer_terms_url,
     footer_show_privacy_policy = false,
@@ -94,7 +100,27 @@ export default function Footer({ settings, storeName }: { settings: any; storeNa
             {storeName}
           </div>
         )}
-        
+
+        {footer_show_address && footer_address && (
+          <div>
+            {footer_address}
+          </div>
+        )}
+
+        {(footer_show_whatsapp && footer_whatsapp) || (footer_show_contact_email && footer_contact_email) ? (
+          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "center" }}>
+            {footer_show_whatsapp && footer_whatsapp && (
+              <span>Whatsapp: {footer_whatsapp}</span>
+            )}
+            {footer_show_whatsapp && footer_whatsapp && footer_show_contact_email && footer_contact_email && (
+              <span>/</span>
+            )}
+            {footer_show_contact_email && footer_contact_email && (
+              <span>Email: {footer_contact_email}</span>
+            )}
+          </div>
+        ) : null}
+
         {footer_show_cnpj && footer_cnpj && (
           <div>
             CNPJ: {footer_cnpj}

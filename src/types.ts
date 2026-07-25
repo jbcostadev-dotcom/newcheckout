@@ -99,6 +99,12 @@ export interface CheckoutData {
       footer_text?: string;
       footer_show_cnpj?: boolean;
       footer_cnpj?: string | null;
+      footer_show_contact_email?: boolean;
+      footer_contact_email?: string | null;
+      footer_show_whatsapp?: boolean;
+      footer_whatsapp?: string | null;
+      footer_show_address?: boolean;
+      footer_address?: string | null;
       font_family?: string;
       font_size_base?: string;
       social_proofs_enabled?: boolean;
