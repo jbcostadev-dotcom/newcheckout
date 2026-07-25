@@ -30,6 +30,7 @@ import OrderSummary, { GroupedItem } from "@/components/OrderSummary";
 import SocialProofs from "@/components/SocialProofs";
 import Footer from "@/components/Footer";
 import ScarcityBar from "@/components/ScarcityBar";
+import { useLiveCheckout } from "@/lib/useLiveCheckout";
 
 type StepId = "dados" | "entrega" | "pagamento";
 
@@ -365,6 +366,27 @@ function CheckoutPageContent() {
   const subtotalWithBump = subtotal + orderBumpPrice;
 
   const displayTotal = subtotalWithBump + shippingPrice - couponDiscount;
+
+  // ── Live checkout heartbeat ───────────────────────────────────────
+  useLiveCheckout(
+    !isPreview && data?.store != null,
+    getStoreIdentifier(),
+    () => ({
+      domain: getStoreIdentifier(),
+      step,
+      customer_name: customerName,
+      customer_email: customerEmail,
+      cep: address.cep,
+      payment_method: paymentMethod,
+      total: displayTotal,
+      items: [],
+    }),
+    data?.products ?? [],
+    productsParam
+      .split(",")
+      .map((s) => parseInt(s.trim(), 10))
+      .filter((n) => !isNaN(n))
+  );
 
   // Itens exibidos no resumo pedidos: produtos normais + order bump selecionado.
   const summaryItems: GroupedItem[] = useMemo(() => {
