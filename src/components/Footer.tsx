@@ -44,7 +44,6 @@ export default function Footer({ settings, storeName }: { settings: any; storeNa
           key={method.name}
           title={method.name}
           style={{
-            border: "1px solid #ddd",
             borderRadius: "4px",
             padding: "4px",
             background: "#fff",
@@ -52,7 +51,7 @@ export default function Footer({ settings, storeName }: { settings: any; storeNa
             alignItems: "center",
             justifyContent: "center",
             minWidth: "40px",
-            height: "28px",
+            height: "34px",
           }}
         >
           <img
