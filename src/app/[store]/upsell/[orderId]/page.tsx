@@ -6,13 +6,42 @@ import QRCode from "qrcode";
 import { apiGet, apiPost } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import type {
-  ConfirmedOrderResponse,
   InstallmentConfig,
   UpsellChargeResponse,
   UpsellOffer,
   UpsellOfferResponse,
   UpsellProductVariant,
 } from "@/types";
+
+interface RedirectSettings {
+  card_redirect_enabled?: boolean;
+  card_redirect_url?: string | null;
+  pix_redirect_enabled?: boolean;
+  pix_redirect_url?: string | null;
+}
+
+function getRedirectSettings(): RedirectSettings {
+  try {
+    const raw = sessionStorage.getItem("pix_page_settings");
+    if (raw) {
+      return JSON.parse(raw) as RedirectSettings;
+    }
+  } catch {
+    // ignore
+  }
+  return {};
+}
+
+function getRedirectUrl(paymentMethod: string, settings?: RedirectSettings | null): string | null {
+  if (!settings) return null;
+  if (paymentMethod === "credit_card" && settings.card_redirect_enabled && settings.card_redirect_url) {
+    return settings.card_redirect_url;
+  }
+  if (paymentMethod === "pix" && settings.pix_redirect_enabled && settings.pix_redirect_url) {
+    return settings.pix_redirect_url;
+  }
+  return null;
+}
 
 function formatCardBrand(brand?: string | null): string {
   if (!brand) return "";
@@ -212,6 +241,11 @@ function UpsellContent() {
         );
 
         if (!res.has_upsell || !res.upsell) {
+          const redirectUrl = getRedirectUrl(res.order?.payment_method ?? "credit_card", getRedirectSettings());
+          if (redirectUrl) {
+            window.location.href = redirectUrl;
+            return;
+          }
           router.replace(`/${storeSlug}/confirmed/${orderId}`);
           return;
         }
@@ -270,6 +304,11 @@ function UpsellContent() {
         );
         if (res.status === "paid" || res.status === "authorized") {
           clearInterval(interval);
+          const redirectUrl = getRedirectUrl("pix", getRedirectSettings());
+          if (redirectUrl) {
+            window.location.href = redirectUrl;
+            return;
+          }
           router.replace(`/${storeSlug}/confirmed/${orderId}`);
         }
       } catch (err) {
@@ -300,6 +339,11 @@ function UpsellContent() {
 
       // Cartão: redireciona direto para confirmed
       if (!res.pix_copia_cola) {
+        const redirectUrl = getRedirectUrl("credit_card", getRedirectSettings());
+        if (redirectUrl) {
+          window.location.href = redirectUrl;
+          return;
+        }
         router.replace(`/${storeSlug}/confirmed/${orderId}`);
         return;
       }
@@ -320,6 +364,11 @@ function UpsellContent() {
         domain,
         order_id: orderId,
       });
+      const redirectUrl = getRedirectUrl(orderInfo?.payment_method ?? "credit_card", getRedirectSettings());
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
+        return;
+      }
       router.replace(`/${storeSlug}/confirmed/${orderId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao recusar oferta.");
@@ -359,7 +408,14 @@ function UpsellContent() {
             {error ?? "Não foi possível carregar a oferta."}
           </p>
           <button
-            onClick={() => router.replace(`/${storeSlug}/confirmed/${orderId}`)}
+            onClick={() => {
+              const redirectUrl = getRedirectUrl(orderInfo?.payment_method ?? "credit_card", getRedirectSettings());
+              if (redirectUrl) {
+                window.location.href = redirectUrl;
+                return;
+              }
+              router.replace(`/${storeSlug}/confirmed/${orderId}`);
+            }}
             style={{
               marginTop: 16,
               padding: "12px 24px",

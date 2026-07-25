@@ -795,6 +795,10 @@ function CheckoutPageContent() {
             dark_mode: data?.store.settings.dark_mode,
             font_family: data?.store.settings.font_family,
             font_size_base: data?.store.settings.font_size_base,
+            card_redirect_enabled: data?.store.settings.card_redirect_enabled,
+            card_redirect_url: data?.store.settings.card_redirect_url,
+            pix_redirect_enabled: data?.store.settings.pix_redirect_enabled,
+            pix_redirect_url: data?.store.settings.pix_redirect_url,
           })
         );
       } catch {
@@ -804,6 +808,10 @@ function CheckoutPageContent() {
       // Status pagos imediatamente (cartão autorizado/pago).
       if (res.status === "paid" || res.status === "authorized") {
         markCompleted("pagamento");
+        if (res.payment_method === "credit_card" && data?.store.settings.card_redirect_enabled && data?.store.settings.card_redirect_url) {
+          window.location.href = data.store.settings.card_redirect_url;
+          return;
+        }
         if (res.has_upsell && res.payment_method === "credit_card") {
           router.push(`/${storeSlug}/upsell/${res.order_id}`);
         } else {

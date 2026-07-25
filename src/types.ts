@@ -103,6 +103,10 @@ export interface CheckoutData {
       font_size_base?: string;
       social_proofs_enabled?: boolean;
       default_payment_method?: "credit_card" | "pix" | "boleto";
+      card_redirect_enabled?: boolean;
+      card_redirect_url?: string | null;
+      pix_redirect_enabled?: boolean;
+      pix_redirect_url?: string | null;
     };
     gateways: { provider: string; public_key?: string | null }[];
     payment_methods?: {

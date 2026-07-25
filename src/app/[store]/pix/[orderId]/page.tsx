@@ -10,6 +10,21 @@ import Loading from "./loading";
 const POLL_INTERVAL_MS = 10000;
 const SETTINGS_STORAGE_KEY = "pix_page_settings";
 
+interface StoredSettings extends PixPaymentSettings {
+  card_redirect_enabled?: boolean;
+  card_redirect_url?: string | null;
+  pix_redirect_enabled?: boolean;
+  pix_redirect_url?: string | null;
+}
+
+function getRedirectUrl(settings?: StoredSettings | null): string | null {
+  if (!settings) return null;
+  if (settings.pix_redirect_enabled && settings.pix_redirect_url) {
+    return settings.pix_redirect_url;
+  }
+  return null;
+}
+
 export default function PixPage() {
   return (
     <Suspense fallback={<Loading />}>
@@ -27,7 +42,7 @@ function PixPageContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<PixStatusResponse | null>(null);
-  const [settings, setSettings] = useState<PixPaymentSettings>({});
+  const [settings, setSettings] = useState<StoredSettings>({});
 
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -54,6 +69,11 @@ function PixPageContent() {
       setData(res);
 
       if (res.status === "paid" || res.status === "authorized") {
+        const redirectUrl = getRedirectUrl(settings);
+        if (redirectUrl) {
+          window.location.href = redirectUrl;
+          return;
+        }
         if (res.has_upsell) {
           router.push(`/${storeSlug}/upsell/${orderId}`);
         } else {
