@@ -125,10 +125,11 @@ export default function PixPaymentView({
   useEffect(() => {
     if (!createdAt) return;
 
-    // Prioriza a expiração retornada pela gateway (Unipay/FastSoft); senão usa o padrão.
-    const expiresAtMs = expiresAt
-      ? new Date(expiresAt).getTime()
-      : new Date(createdAt).getTime() + PIX_EXPIRATION_MINUTES * 60 * 1000;
+    // O padrão do checkout é 30 minutos a partir da criação do pedido.
+    // Limita pela expiração retornada pela gateway (Unipay/FastSoft), caso seja menor.
+    const defaultExpiresAtMs = new Date(createdAt).getTime() + PIX_EXPIRATION_MINUTES * 60 * 1000;
+    const gatewayExpiresAtMs = expiresAt ? new Date(expiresAt).getTime() : Infinity;
+    const expiresAtMs = Math.min(defaultExpiresAtMs, gatewayExpiresAtMs);
 
     const updateTimer = () => {
       const now = Date.now();
