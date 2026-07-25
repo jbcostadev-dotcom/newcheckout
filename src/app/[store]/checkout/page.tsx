@@ -1320,6 +1320,7 @@ function CheckoutPageContent() {
           }
           .mobile-social-proofs {
             display: block !important;
+            width: 100% !important;
             padding: 0 16px 24px 16px !important;
           }
         }

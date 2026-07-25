@@ -34,20 +34,22 @@ export default function SocialProofs({ className, reviews }: SocialProofsProps) 
   if (items.length === 0) return null;
 
   return (
-    <div className={className} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ position: "relative", overflow: "hidden", borderRadius: 10 }}>
+    <div className={className} style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%" }}>
+      <div style={{ position: "relative", overflow: "hidden", borderRadius: 10, width: "100%" }}>
         <div 
           style={{ 
             display: "flex", 
+            width: "100%",
             transition: "transform 0.5s ease-in-out",
             transform: `translateX(-${currentIndex * 100}%)`
           }}
         >
           {items.map((review, idx) => (
-            <div key={idx} style={{ minWidth: "100%", paddingRight: 4 }}>
+            <div key={idx} style={{ minWidth: "100%", width: "100%", paddingRight: 4 }}>
               <div 
                 className="review-card" 
                 style={{ 
+                  width: "100%",
                   height: "100%", 
                   display: "flex", 
                   flexDirection: "column", 
