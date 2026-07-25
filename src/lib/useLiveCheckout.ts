@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { CheckoutProduct } from "@/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -24,63 +23,52 @@ export interface LiveCheckoutData {
   items: LiveCheckoutItem[];
 }
 
-function generateSessionId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-}
+const SESSION_KEY = "live_checkout_session_id";
 
-function buildItems(products: CheckoutProduct[], ids: number[]): LiveCheckoutItem[] {
-  const seen = new Map<number, LiveCheckoutItem>();
-  for (const id of ids) {
-    const product = products.find((p) => p.id === id);
-    if (!product) continue;
-    const existing = seen.get(id);
-    if (existing) {
-      existing.qty += 1;
-    } else {
-      seen.set(id, {
-        name: product.name,
-        qty: 1,
-        unit_price: Number(product.price),
-      });
-    }
+function getOrCreateSessionId(): string {
+  if (typeof window === "undefined") {
+    return "";
   }
-  return Array.from(seen.values());
+  try {
+    const existing = sessionStorage.getItem(SESSION_KEY);
+    if (existing) return existing;
+    const id = typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    sessionStorage.setItem(SESSION_KEY, id);
+    return id;
+  } catch {
+    return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+  }
 }
 
 /**
  * Envia heartbeat periódico para o backend indicando que o cliente
- * ainda está ativo no checkout. A sessão expira sozinha se o heartbeat
- * parar (TTL de 60s), e também é removida no beforeunload da página.
+ * ainda está ativo no checkout. Mantém uma única sessão por aba e
+ * atualiza os dados (nome, etapa, CEP, pagamento, total, itens) no
+ * mesmo registro.
+ *
+ * A sessão expira rapidamente se o heartbeat parar (TTL curto no
+ * backend) e também é removida no beforeunload/pagehide da página.
  */
 export function useLiveCheckout(
   enabled: boolean,
   domain: string,
-  getData: () => LiveCheckoutData,
-  products: CheckoutProduct[],
-  productIds: number[]
+  getData: () => LiveCheckoutData
 ) {
   const sessionIdRef = useRef<string>("");
   const getDataRef = useRef(getData);
-  const itemsRef = useRef<LiveCheckoutItem[]>([]);
 
   useEffect(() => {
     getDataRef.current = getData;
   }, [getData]);
 
   useEffect(() => {
-    itemsRef.current = buildItems(products, productIds);
-  }, [products, productIds]);
-
-  useEffect(() => {
     if (!enabled || !API_URL || typeof window === "undefined") return;
 
-    sessionIdRef.current = generateSessionId();
+    sessionIdRef.current = getOrCreateSessionId();
     const sessionId = sessionIdRef.current;
     let interval: NodeJS.Timeout | null = null;
-    let lastSent = "";
 
     const send = async () => {
       const data = getDataRef.current();
@@ -93,13 +81,8 @@ export function useLiveCheckout(
         cep: data.cep || null,
         payment_method: data.payment_method || null,
         total: data.total,
-        items: itemsRef.current,
+        items: data.items,
       };
-
-      // Evita reenviar exatamente o mesmo payload para economizar requests.
-      const payloadHash = JSON.stringify(payload);
-      if (payloadHash === lastSent) return;
-      lastSent = payloadHash;
 
       try {
         await fetch(`${API_URL}/api/checkout/live/heartbeat`, {
@@ -114,14 +97,11 @@ export function useLiveCheckout(
     };
 
     send();
-    interval = setInterval(send, 10000);
+    interval = setInterval(send, 3000);
 
     const remove = () => {
       try {
-        const payload = {
-          domain,
-          session_id: sessionId,
-        };
+        const payload = { domain, session_id: sessionId };
         if (navigator.sendBeacon) {
           navigator.sendBeacon(
             `${API_URL}/api/checkout/live/remove`,
@@ -149,5 +129,5 @@ export function useLiveCheckout(
       window.removeEventListener("pagehide", remove);
       remove();
     };
-  }, [enabled, domain, products, productIds]);
+  }, [enabled, domain]);
 }

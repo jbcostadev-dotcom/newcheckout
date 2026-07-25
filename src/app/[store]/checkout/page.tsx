@@ -368,10 +368,24 @@ function CheckoutPageContent() {
   const displayTotal = subtotalWithBump + shippingPrice - couponDiscount;
 
   // ── Live checkout heartbeat ───────────────────────────────────────
-  useLiveCheckout(
-    !isPreview && data?.store != null,
-    getStoreIdentifier(),
-    () => ({
+  useLiveCheckout(!isPreview && data?.store != null, getStoreIdentifier(), () => {
+    const items: { name: string; qty: number; unit_price: number }[] = [];
+    for (const g of groupedItems) {
+      items.push({
+        name: g.product.name,
+        qty: g.qty,
+        unit_price: Number(g.product.price),
+      });
+    }
+    if (selectedOrderBump) {
+      items.push({
+        name: selectedOrderBump.product.name,
+        qty: 1,
+        unit_price: Number(selectedOrderBump.product.bump_price),
+      });
+    }
+
+    return {
       domain: getStoreIdentifier(),
       step,
       customer_name: customerName,
@@ -379,14 +393,9 @@ function CheckoutPageContent() {
       cep: address.cep,
       payment_method: paymentMethod,
       total: displayTotal,
-      items: [],
-    }),
-    data?.products ?? [],
-    productsParam
-      .split(",")
-      .map((s) => parseInt(s.trim(), 10))
-      .filter((n) => !isNaN(n))
-  );
+      items,
+    };
+  });
 
   // Itens exibidos no resumo pedidos: produtos normais + order bump selecionado.
   const summaryItems: GroupedItem[] = useMemo(() => {
