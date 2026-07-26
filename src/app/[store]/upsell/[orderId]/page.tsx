@@ -520,7 +520,7 @@ function UpsellContent() {
       {settings.banner_url && (
         <div style={{ maxWidth: 680, width: "100%", margin: "0 auto", padding: "24px 24px 0 24px" }}>
           <div style={{ width: "100%", overflow: "hidden", borderRadius: 12, background: "var(--card-bg)" }}>
-            <img src={settings.banner_url} alt="Banner" style={{ width: "100%", height: bannerHeightPx, objectFit: "contain", display: "block", borderRadius: 12 }} />
+            <img src={settings.banner_url} alt="Banner" style={{ width: "100%", objectFit: "contain", display: "block", borderRadius: 12 }} />
           </div>
         </div>
       )}

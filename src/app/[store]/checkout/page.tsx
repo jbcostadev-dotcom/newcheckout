@@ -1043,7 +1043,6 @@ function CheckoutPageContent() {
               alt="Banner"
               style={{
                 width: "100%",
-                height: bannerHeightPx,
                 objectFit: "contain",
                 display: "block",
                 borderRadius: 12,
