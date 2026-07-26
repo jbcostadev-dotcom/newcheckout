@@ -1021,17 +1021,35 @@ function CheckoutPageContent() {
 
       {/* ─── Banner Image ─── */}
       {settings.banner_url && (
-        <div style={{ width: "100%", overflow: "hidden" }}>
-          <img
-            src={settings.banner_url}
-            alt="Banner"
+        <div
+          className="checkout-banner-wrapper"
+          style={{
+            maxWidth: 1200,
+            width: "100%",
+            margin: "0 auto",
+            padding: "24px 24px 0 24px",
+          }}
+        >
+          <div
             style={{
               width: "100%",
-              height: bannerHeightPx,
-              objectFit: "cover",
-              display: "block",
+              overflow: "hidden",
+              borderRadius: 12,
+              background: "var(--card-bg)",
             }}
-          />
+          >
+            <img
+              src={settings.banner_url}
+              alt="Banner"
+              style={{
+                width: "100%",
+                height: bannerHeightPx,
+                objectFit: "contain",
+                display: "block",
+                borderRadius: 12,
+              }}
+            />
+          </div>
         </div>
       )}
 
@@ -1299,8 +1317,10 @@ function CheckoutPageContent() {
             grid-column: 1 / -1;
             position: static !important;
           }
-        }
         @media (max-width: 768px) {
+          .checkout-banner-wrapper {
+            padding: 16px 16px 0 16px !important;
+          }
           .checkout-main {
             grid-template-columns: 1fr !important;
             padding: 16px !important;
