@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import PixPaymentView, { type PixPaymentSettings } from "@/components/PixPaymentView";
 import Loading from "../[orderId]/loading";
@@ -22,6 +22,11 @@ function PixPreviewContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const storeSlug = params.store as string;
+  const isStoreId = useMemo(() => /^\d+$/.test(storeSlug), [storeSlug]);
+  const storePathPrefix = useMemo(
+    () => (isStoreId ? `/store/${storeSlug}` : `/${storeSlug}`),
+    [isStoreId, storeSlug]
+  );
 
   const isPreview = searchParams.get("preview") === "1";
   const [mounted, setMounted] = useState(false);
@@ -79,7 +84,7 @@ function PixPreviewContent() {
       createdAt={new Date().toISOString()}
       isPreview
       initialSettings={settings}
-      onBackToCheckout={() => router.push(`/${storeSlug}/checkout?preview=1`)}
+      onBackToCheckout={() => router.push(`${storePathPrefix}/checkout?preview=1`)}
     />
   );
 }

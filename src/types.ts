@@ -66,6 +66,7 @@ export interface InstallmentConfig {
 
 export interface CheckoutData {
   store: {
+    id: number;
     name: string;
     settings: {
       primary_color: string;

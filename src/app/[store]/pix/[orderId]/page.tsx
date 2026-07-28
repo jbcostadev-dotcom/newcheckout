@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState, useCallback, useRef } from "react";
+import { Suspense, useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiGet } from "@/lib/api";
 import type { PixStatusResponse } from "@/types";
@@ -37,6 +37,11 @@ function PixPageContent() {
   const params = useParams();
   const router = useRouter();
   const storeSlug = params.store as string;
+  const isStoreId = useMemo(() => /^\d+$/.test(storeSlug), [storeSlug]);
+  const storePathPrefix = useMemo(
+    () => (isStoreId ? `/store/${storeSlug}` : `/${storeSlug}`),
+    [isStoreId, storeSlug]
+  );
   const orderId = parseInt(params.orderId as string, 10);
 
   const [loading, setLoading] = useState(true);
@@ -75,9 +80,9 @@ function PixPageContent() {
           return;
         }
         if (res.has_upsell) {
-          router.push(`/${storeSlug}/upsell/${orderId}`);
+          router.push(`${storePathPrefix}/upsell/${orderId}`);
         } else {
-          router.push(`/${storeSlug}/confirmed/${orderId}`);
+          router.push(`${storePathPrefix}/confirmed/${orderId}`);
         }
       } else if (res.status === "refused" || res.status === "canceled" || res.status === "failed") {
         setError("O pagamento foi recusado ou cancelado.");

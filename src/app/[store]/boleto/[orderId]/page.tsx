@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState, useCallback, useRef } from "react";
+import { Suspense, useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiGet } from "@/lib/api";
 import type { PixStatusResponse } from "@/types";
@@ -21,6 +21,11 @@ function BoletoPageContent() {
   const params = useParams();
   const router = useRouter();
   const storeSlug = params.store as string;
+  const isStoreId = useMemo(() => /^\d+$/.test(storeSlug), [storeSlug]);
+  const storePathPrefix = useMemo(
+    () => (isStoreId ? `/store/${storeSlug}` : `/${storeSlug}`),
+    [isStoreId, storeSlug]
+  );
   const orderId = parseInt((params.orderId as string) ?? "", 10);
 
   const [loading, setLoading] = useState(true);
@@ -39,7 +44,7 @@ function BoletoPageContent() {
       const res = await apiGet<PixStatusResponse>(`/checkout/order/${orderId}/pix`);
       setData(res);
       if (res.status === "paid" || res.status === "authorized") {
-        router.push(`/${storeSlug}/confirmed/${orderId}`);
+        router.push(`${storePathPrefix}/confirmed/${orderId}`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao carregar boleto.");

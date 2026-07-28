@@ -128,6 +128,11 @@ function UpsellContent() {
   const params = useParams();
   const router = useRouter();
   const storeSlug = params.store as string;
+  const isStoreId = useMemo(() => /^\d+$/.test(storeSlug), [storeSlug]);
+  const storePathPrefix = useMemo(
+    () => (isStoreId ? `/store/${storeSlug}` : `/${storeSlug}`),
+    [isStoreId, storeSlug]
+  );
   const orderId = parseInt(params.orderId as string, 10);
 
   const [loading, setLoading] = useState(true);
@@ -162,7 +167,12 @@ function UpsellContent() {
     return hostname;
   }, [storeSlug]);
 
-  const domain = useMemo(() => getStoreIdentifier(), [getStoreIdentifier]);
+  const buildStoreQuery = useCallback((): string => {
+    if (isStoreId) {
+      return `store_id=${encodeURIComponent(storeSlug)}`;
+    }
+    return `domain=${encodeURIComponent(getStoreIdentifier())}`;
+  }, [isStoreId, storeSlug, getStoreIdentifier]);
 
   const installmentOptions = useMemo(() => {
     if (!offer) return [];
@@ -235,9 +245,8 @@ function UpsellContent() {
 
     const fetchOffer = async () => {
       try {
-        const d = getStoreIdentifier();
         const res = await apiGet<UpsellOfferResponse>(
-          `/checkout/upsell?domain=${encodeURIComponent(d)}&order_id=${orderId}`
+          `/checkout/upsell?${buildStoreQuery()}&order_id=${orderId}`
         );
 
         if (!res.has_upsell || !res.upsell) {
@@ -246,7 +255,7 @@ function UpsellContent() {
             window.location.href = redirectUrl;
             return;
           }
-          router.replace(`/${storeSlug}/confirmed/${orderId}`);
+          router.replace(`${storePathPrefix}/confirmed/${orderId}`);
           return;
         }
 
@@ -309,7 +318,7 @@ function UpsellContent() {
             window.location.href = redirectUrl;
             return;
           }
-          router.replace(`/${storeSlug}/confirmed/${orderId}`);
+          router.replace(`${storePathPrefix}/confirmed/${orderId}`);
         }
       } catch (err) {
         console.error("Erro no polling do PIX upsell", err);
@@ -323,14 +332,20 @@ function UpsellContent() {
     if (!offer) return;
     setCharging(true);
     try {
-      const res = await apiPost<UpsellChargeResponse>("/checkout/upsell/charge", {
-        domain,
+      const payload: Record<string, unknown> = {
         order_id: orderId,
         upsell_id: offer.id,
         installments,
         variant_id: selectedVariant?.id ?? offer.product.id,
         variant_attributes: selectedVariant?.attributes ?? offer.product.attributes ?? null,
-      });
+      };
+      if (isStoreId) {
+        payload.store_id = parseInt(storeSlug, 10);
+      } else {
+        payload.domain = getStoreIdentifier();
+      }
+
+      const res = await apiPost<UpsellChargeResponse>("/checkout/upsell/charge", payload);
 
       if (!res.success) {
         setError(res.message || "Não foi possível processar a oferta.");
@@ -344,7 +359,7 @@ function UpsellContent() {
           window.location.href = redirectUrl;
           return;
         }
-        router.replace(`/${storeSlug}/confirmed/${orderId}`);
+        router.replace(`${storePathPrefix}/confirmed/${orderId}`);
         return;
       }
 
@@ -355,21 +370,24 @@ function UpsellContent() {
     } finally {
       setCharging(false);
     }
-  }, [offer, orderId, domain, router, installments, selectedVariant]);
+  }, [offer, orderId, isStoreId, storeSlug, storePathPrefix, getStoreIdentifier, router, installments, selectedVariant]);
 
   const handleDecline = useCallback(async () => {
     setDeclining(true);
     try {
-      await apiPost("/checkout/upsell/decline", {
-        domain,
-        order_id: orderId,
-      });
+      const payload: Record<string, unknown> = { order_id: orderId };
+      if (isStoreId) {
+        payload.store_id = parseInt(storeSlug, 10);
+      } else {
+        payload.domain = getStoreIdentifier();
+      }
+      await apiPost("/checkout/upsell/decline", payload);
       const redirectUrl = getRedirectUrl(orderInfo?.payment_method ?? "credit_card", getRedirectSettings());
       if (redirectUrl) {
         window.location.href = redirectUrl;
         return;
       }
-      router.replace(`/${storeSlug}/confirmed/${orderId}`);
+      router.replace(`${storePathPrefix}/confirmed/${orderId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao recusar oferta.");
       setDeclining(false);
@@ -414,7 +432,7 @@ function UpsellContent() {
                 window.location.href = redirectUrl;
                 return;
               }
-              router.replace(`/${storeSlug}/confirmed/${orderId}`);
+              router.replace(`${storePathPrefix}/confirmed/${orderId}`);
             }}
             style={{
               marginTop: 16,

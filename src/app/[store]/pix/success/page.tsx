@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Loading from "../[orderId]/loading";
 
@@ -15,6 +15,11 @@ export default function PixSuccessPage() {
 function PixSuccessContent() {
   const params = useParams();
   const storeSlug = params.store as string;
+  const isStoreId = useMemo(() => /^\d+$/.test(storeSlug), [storeSlug]);
+  const storePathPrefix = useMemo(
+    () => (isStoreId ? `/store/${storeSlug}` : `/${storeSlug}`),
+    [isStoreId, storeSlug]
+  );
 
   return (
     <div
@@ -77,7 +82,7 @@ function PixSuccessContent() {
           Obrigado pela sua compra. Você receberá um e-mail com os detalhes do pedido em breve.
         </p>
         <a
-          href={`/${storeSlug}/checkout`}
+          href={`${storePathPrefix}/checkout`}
           style={{
             display: "inline-block",
             padding: "12px 24px",

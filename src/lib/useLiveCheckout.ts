@@ -13,7 +13,8 @@ export interface LiveCheckoutItem {
 }
 
 export interface LiveCheckoutData {
-  domain: string;
+  storeId?: string;
+  domain?: string;
   step: LiveCheckoutStep;
   customer_name: string;
   customer_email: string;
@@ -53,7 +54,8 @@ function getOrCreateSessionId(): string {
  */
 export function useLiveCheckout(
   enabled: boolean,
-  domain: string,
+  storeId: string | undefined,
+  domain: string | undefined,
   getData: () => LiveCheckoutData
 ) {
   const sessionIdRef = useRef<string>("");
@@ -72,8 +74,7 @@ export function useLiveCheckout(
 
     const send = async () => {
       const data = getDataRef.current();
-      const payload = {
-        domain,
+      const payload: Record<string, unknown> = {
         session_id: sessionId,
         step: data.step,
         customer_name: data.customer_name || null,
@@ -83,6 +84,12 @@ export function useLiveCheckout(
         total: data.total,
         items: data.items,
       };
+
+      if (data.storeId) {
+        payload.store_id = data.storeId;
+      } else if (data.domain) {
+        payload.domain = data.domain;
+      }
 
       try {
         await fetch(`${API_URL}/api/checkout/live/heartbeat`, {
@@ -101,7 +108,12 @@ export function useLiveCheckout(
 
     const remove = () => {
       try {
-        const payload = { domain, session_id: sessionId };
+        const payload: Record<string, unknown> = { session_id: sessionId };
+        if (storeId) {
+          payload.store_id = storeId;
+        } else if (domain) {
+          payload.domain = domain;
+        }
         if (navigator.sendBeacon) {
           navigator.sendBeacon(
             `${API_URL}/api/checkout/live/remove`,
@@ -129,5 +141,5 @@ export function useLiveCheckout(
       window.removeEventListener("pagehide", remove);
       remove();
     };
-  }, [enabled, domain]);
+  }, [enabled, storeId, domain]);
 }

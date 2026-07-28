@@ -81,6 +81,11 @@ function CheckoutPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const storeSlug = params.store as string;
+  const isStoreId = useMemo(() => /^\d+$/.test(storeSlug), [storeSlug]);
+  const storePathPrefix = useMemo(
+    () => (isStoreId ? `/store/${storeSlug}` : `/${storeSlug}`),
+    [isStoreId, storeSlug]
+  );
   const isPreview = searchParams.get("preview") === "1";
   const productsParam = isPreview ? "1,2" : searchParams.get("products") ?? "";
 
@@ -221,19 +226,38 @@ function CheckoutPageContent() {
     return hostname;
   }, [storeSlug]);
 
+  const buildStoreQuery = useCallback((): string => {
+    if (isStoreId) {
+      return `store_id=${encodeURIComponent(storeSlug)}`;
+    }
+    return `domain=${encodeURIComponent(getStoreIdentifier())}`;
+  }, [isStoreId, storeSlug, getStoreIdentifier]);
+
   useEffect(() => {
     const fetchCheckout = async () => {
       try {
-        const domain = getStoreIdentifier();
+        const storeQuery = buildStoreQuery();
         const endpoint = isPreview
-          ? `/checkout/preview?domain=${encodeURIComponent(domain)}`
-          : `/checkout?domain=${encodeURIComponent(domain)}&product_ids=${encodeURIComponent(productsParam)}`;
+          ? `/checkout/preview?${storeQuery}`
+          : `/checkout?${storeQuery}&product_ids=${encodeURIComponent(productsParam)}`;
         const res = await apiGet<CheckoutData>(endpoint);
         if (process.env.NODE_ENV === "development") {
           // eslint-disable-next-line no-console
           console.log("[checkout] order_bumps:", res.order_bumps);
         }
         setData(res);
+
+        // Se a URL atual usa slug legado no domínio principal do checkout,
+        // redireciona para o novo formato imutável /store/{id}/checkout.
+        // Domínios customizados/subdomínios de loja continuam no host original.
+        const hostname = window.location.hostname;
+        const checkoutAppDomain =
+          process.env.NEXT_PUBLIC_CHECKOUT_APP_DOMAIN || `checkout.${process.env.NEXT_PUBLIC_CHECKOUT_BASE_DOMAIN || "bersenker.shop"}`;
+        if (!isStoreId && res.store?.id && !isPreview && productsParam &&
+            (hostname === checkoutAppDomain || hostname === `www.${checkoutAppDomain}`)) {
+          const newUrl = `/store/${res.store.id}/checkout?products=${encodeURIComponent(productsParam)}`;
+          router.replace(newUrl);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erro ao carregar checkout.");
       } finally {
@@ -241,7 +265,7 @@ function CheckoutPageContent() {
       }
     };
     fetchCheckout();
-  }, [productsParam, getStoreIdentifier, isPreview]);
+  }, [productsParam, buildStoreQuery, isPreview, isStoreId, router]);
 
   useEffect(() => {
     if (!isPreview) return;
@@ -368,34 +392,40 @@ function CheckoutPageContent() {
   const displayTotal = subtotalWithBump + shippingPrice - couponDiscount;
 
   // ── Live checkout heartbeat ───────────────────────────────────────
-  useLiveCheckout(!isPreview && data?.store != null, getStoreIdentifier(), () => {
-    const items: { name: string; qty: number; unit_price: number }[] = [];
-    for (const g of groupedItems) {
-      items.push({
-        name: g.product.name,
-        qty: g.qty,
-        unit_price: Number(g.product.price),
-      });
-    }
-    if (selectedOrderBump) {
-      items.push({
-        name: selectedOrderBump.product.name,
-        qty: 1,
-        unit_price: Number(selectedOrderBump.product.bump_price),
-      });
-    }
+  useLiveCheckout(
+    !isPreview && data?.store != null,
+    isStoreId ? storeSlug : undefined,
+    isStoreId ? undefined : getStoreIdentifier(),
+    () => {
+      const items: { name: string; qty: number; unit_price: number }[] = [];
+      for (const g of groupedItems) {
+        items.push({
+          name: g.product.name,
+          qty: g.qty,
+          unit_price: Number(g.product.price),
+        });
+      }
+      if (selectedOrderBump) {
+        items.push({
+          name: selectedOrderBump.product.name,
+          qty: 1,
+          unit_price: Number(selectedOrderBump.product.bump_price),
+        });
+      }
 
-    return {
-      domain: getStoreIdentifier(),
-      step,
-      customer_name: customerName,
-      customer_email: customerEmail,
-      cep: address.cep,
-      payment_method: paymentMethod,
-      total: displayTotal,
-      items,
-    };
-  });
+      return {
+        storeId: isStoreId ? storeSlug : undefined,
+        domain: isStoreId ? undefined : getStoreIdentifier(),
+        step,
+        customer_name: customerName,
+        customer_email: customerEmail,
+        cep: address.cep,
+        payment_method: paymentMethod,
+        total: displayTotal,
+        items,
+      };
+    }
+  );
 
   // Itens exibidos no resumo pedidos: produtos normais + order bump selecionado.
   const summaryItems: GroupedItem[] = useMemo(() => {
@@ -414,7 +444,6 @@ function CheckoutPageContent() {
   // Registra o cliente no backend (e sincroniza com a Shopify quando a loja
   // estiver conectada). Fire-and-forget — não bloqueia o fluxo do checkout.
   const registerCustomer = useCallback(() => {
-    const domain = getStoreIdentifier();
     const name = customerName.trim();
     const email = customerEmail.trim();
     const phone = customerPhone;
@@ -422,47 +451,58 @@ function CheckoutPageContent() {
 
     if (name.length < 3 || !email) return;
 
+    const payload: Record<string, unknown> = {
+      name,
+      email,
+      phone,
+      document,
+    };
+    if (isStoreId) {
+      payload.store_id = storeSlug;
+    } else {
+      payload.domain = getStoreIdentifier();
+    }
+
     try {
-      apiPost("/checkout/customer", {
-        domain,
-        name,
-        email,
-        phone,
-        document,
-      }).catch(() => {
+      apiPost("/checkout/customer", payload).catch(() => {
         /* ignore: best-effort */
       });
     } catch {
       /* ignore */
     }
-  }, [customerName, customerEmail, customerPhone, customerDocument, getStoreIdentifier]);
+  }, [customerName, customerEmail, customerPhone, customerDocument, isStoreId, storeSlug, getStoreIdentifier]);
 
   // Atualiza o endereço do cliente no backend e na Shopify (best-effort).
   const updateCustomerAddress = useCallback(() => {
-    const domain = getStoreIdentifier();
     const email = customerEmail.trim();
     if (!email || !address.cep) return;
 
+    const payload: Record<string, unknown> = {
+      email,
+      address: {
+        cep: address.cep,
+        logradouro: address.logradouro,
+        numero: address.numero,
+        complemento: address.complemento,
+        bairro: address.bairro,
+        cidade: address.cidade,
+        uf: address.uf,
+      },
+    };
+    if (isStoreId) {
+      payload.store_id = storeSlug;
+    } else {
+      payload.domain = getStoreIdentifier();
+    }
+
     try {
-      apiPost("/checkout/customer/address", {
-        domain,
-        email,
-        address: {
-          cep: address.cep,
-          logradouro: address.logradouro,
-          numero: address.numero,
-          complemento: address.complemento,
-          bairro: address.bairro,
-          cidade: address.cidade,
-          uf: address.uf,
-        },
-      }).catch(() => {
+      apiPost("/checkout/customer/address", payload).catch(() => {
         /* ignore: best-effort */
       });
     } catch {
       /* ignore */
     }
-  }, [customerEmail, address, getStoreIdentifier]);
+  }, [customerEmail, address, isStoreId, storeSlug, getStoreIdentifier]);
 
   // Rastreia o carrinho abandonado no backend (best-effort).
   const trackAbandonedCart = useCallback(
@@ -481,13 +521,11 @@ function CheckoutPageContent() {
         card_last4?: string | null;
       }
     ) => {
-      const domain = getStoreIdentifier();
       const email = customerEmail.trim();
       const name = customerName.trim();
       if (!email || name.length < 3 || groupedItems.length === 0) return;
 
       const payload: Record<string, unknown> = {
-        domain,
         step_reached: step,
         customer_name: name,
         customer_email: email,
@@ -502,6 +540,12 @@ function CheckoutPageContent() {
         subtotal,
         total: displayTotal,
       };
+
+      if (isStoreId) {
+        payload.store_id = storeSlug;
+      } else {
+        payload.domain = getStoreIdentifier();
+      }
 
       if (step !== "dados" && address.cep) {
         payload.shipping_address = {
@@ -551,6 +595,8 @@ function CheckoutPageContent() {
       address,
       selectedShippingMethod,
       getStoreIdentifier,
+      isStoreId,
+      storeSlug,
     ]
   );
 
@@ -584,14 +630,16 @@ function CheckoutPageContent() {
     setApplyingCoupon(true);
     setCouponError(null);
     try {
-      const domain = getStoreIdentifier();
       const productIds = productsParam
         .split(",")
         .map((s) => parseInt(s.trim(), 10))
         .filter((n) => !isNaN(n))
         .join(",");
+      const storeQuery = isStoreId
+        ? `store_id=${encodeURIComponent(storeSlug)}`
+        : `domain=${encodeURIComponent(getStoreIdentifier())}`;
       const res = await apiGet<ValidatedCoupon>(
-        `/checkout/coupon?domain=${encodeURIComponent(domain)}&product_ids=${encodeURIComponent(productIds)}&code=${encodeURIComponent(code)}`
+        `/checkout/coupon?${storeQuery}&product_ids=${encodeURIComponent(productIds)}&code=${encodeURIComponent(code)}`
       );
       setAppliedCoupon(res);
 
@@ -706,8 +754,8 @@ function CheckoutPageContent() {
           markCompleted("pagamento");
           const dest =
             pm === "boleto"
-              ? `/${storeSlug}/boleto/preview?preview=1`
-              : `/${storeSlug}/pix/preview?preview=1`;
+              ? `${storePathPrefix}/boleto/preview?preview=1`
+              : `${storePathPrefix}/pix/preview?preview=1`;
           router.push(dest);
         } else {
           alert("Modo de visualização: o pagamento não é processado no editor.");
@@ -751,13 +799,11 @@ function CheckoutPageContent() {
 
     setProcessing(true);
     try {
-      const domain = getStoreIdentifier();
       const items = groupedItems.map((g) => ({
         product_id: g.product.id,
         qty: g.qty,
       }));
       const payload: Record<string, unknown> = {
-        domain,
         items,
         customer_name: customerName.trim(),
         customer_email: customerEmail.trim(),
@@ -768,6 +814,12 @@ function CheckoutPageContent() {
         shipping_address: address,
         order_bump_id: selectedOrderBump?.id ?? null,
       };
+
+      if (isStoreId) {
+        payload.store_id = parseInt(storeSlug, 10);
+      } else {
+        payload.domain = getStoreIdentifier();
+      }
       if (pm === "credit_card") {
         payload.card_number = card.number.replace(/\D+/g, "");
         payload.card_holder = card.holder.trim().toUpperCase();
@@ -813,9 +865,9 @@ function CheckoutPageContent() {
           return;
         }
         if (res.has_upsell && res.payment_method === "credit_card") {
-          router.push(`/${storeSlug}/upsell/${res.order_id}`);
+          router.push(`${storePathPrefix}/upsell/${res.order_id}`);
         } else {
-          router.push(`/${storeSlug}/confirmed/${res.order_id}`);
+          router.push(`${storePathPrefix}/confirmed/${res.order_id}`);
         }
         return;
       }
@@ -828,11 +880,11 @@ function CheckoutPageContent() {
       markCompleted("pagamento");
       switch (res.payment_method ?? pm) {
         case "boleto":
-          router.push(`/${storeSlug}/boleto/${res.order_id}`);
+          router.push(`${storePathPrefix}/boleto/${res.order_id}`);
           break;
         case "pix":
         default:
-          router.push(`/${storeSlug}/pix/${res.order_id}`);
+          router.push(`${storePathPrefix}/pix/${res.order_id}`);
       }
     } catch (err) {
       if (err instanceof ApiError) {

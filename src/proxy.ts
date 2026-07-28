@@ -21,11 +21,13 @@ const RESERVED = new Set([
 
 /**
  * Proxy (ex-middleware no Next.js 16):
- * 1. /{store}/checkout          → store do path (checkout app domain)
- * 2. /checkout                  → store do host (custom domain / subdomain)
+ * 1. /store/{id}/*              → novo formato imutável (ID numérico)
+ * 2. /{store}/*                 → legado (slug/subdomínio) — repassa para a página
+ * 3. /checkout                  → store do host (custom domain / subdomain)
  *
- * - checkout.bersenker.shop/nike/checkout?products=1 → store = "nike" (path)
- * - www.lojanike.com.br/checkout?products=1,1,2       → store = host (rewrite)
+ * - checkout.bersenker.shop/store/82/checkout?products=1 → store = "82" (ID)
+ * - checkout.bersenker.shop/nike/checkout?products=1     → store = "nike" (legacy slug)
+ * - www.lojanike.com.br/checkout?products=1,1,2          → store = host (rewrite)
  */
 export function proxy(request: NextRequest) {
   const hostname = request.headers.get("host")?.split(":")[0] ?? "";
@@ -37,8 +39,21 @@ export function proxy(request: NextRequest) {
 
   const requestHeaders = new Headers(request.headers);
 
-  // Case 1: checkout.bersenker.shop/{store}/checkout — extract store from path
+  // Case 1: checkout.bersenker.shop/store/{id}/* — novo formato imutável
   if (hostname === CHECKOUT_APP_DOMAIN || hostname === `www.${CHECKOUT_APP_DOMAIN}`) {
+    const storeIdMatch = pathname.match(/^\/store\/([^/]+)(\/.*)?$/);
+    if (storeIdMatch && storeIdMatch[1] && /^\d+$/.test(storeIdMatch[1])) {
+      const storeId = storeIdMatch[1];
+      const rest = storeIdMatch[2] ?? "";
+      requestHeaders.set("x-store-identifier", storeId);
+      // Reescreve internamente para /{id}/*, preservando o segmento
+      // dinâmico esperado pelas páginas do app, mas mantendo a URL pública
+      // limpa (/store/{id}/*).
+      const newUrl = new URL(request.url);
+      newUrl.pathname = `/${storeId}${rest || "/"}`;
+      return NextResponse.rewrite(newUrl, { request: { headers: requestHeaders } });
+    }
+
     const match = pathname.match(/^\/([^/]+)\/checkout(?:$|[/?#])/);
     if (match && match[1]) {
       requestHeaders.set("x-store-identifier", match[1]);
