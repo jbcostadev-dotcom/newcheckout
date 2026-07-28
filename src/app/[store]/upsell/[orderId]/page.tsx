@@ -281,7 +281,7 @@ function UpsellContent() {
     };
 
     fetchOffer();
-  }, [orderId, getStoreIdentifier, router, storeSlug]);
+  }, [orderId, isStoreId, storeSlug, getStoreIdentifier, router]);
 
   // Gera QR code quando retorna novo PIX
   useEffect(() => {
@@ -392,7 +392,7 @@ function UpsellContent() {
       setError(err instanceof Error ? err.message : "Erro ao recusar oferta.");
       setDeclining(false);
     }
-  }, [orderId, domain, router, storeSlug]);
+  }, [orderId, isStoreId, storeSlug, storePathPrefix, getStoreIdentifier, router]);
 
   if (loading) {
     return (
