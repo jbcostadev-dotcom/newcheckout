@@ -4,23 +4,9 @@ const BASE_DOMAIN =
   process.env.NEXT_PUBLIC_CHECKOUT_BASE_DOMAIN || "bersenker.shop";
 const CHECKOUT_APP_DOMAIN =
   process.env.NEXT_PUBLIC_CHECKOUT_APP_DOMAIN || `checkout.${BASE_DOMAIN}`;
-const ADMIN_DOMAIN =
-  process.env.NEXT_PUBLIC_ADMIN_DOMAIN || `app.${BASE_DOMAIN}`;
-const API_DOMAIN =
-  process.env.NEXT_PUBLIC_API_DOMAIN || `api.${BASE_DOMAIN}`;
-
-const RESERVED = new Set([
-  BASE_DOMAIN,
-  `www.${BASE_DOMAIN}`,
-  CHECKOUT_APP_DOMAIN,
-  `www.${CHECKOUT_APP_DOMAIN}`,
-  ADMIN_DOMAIN,
-  API_DOMAIN,
-  "localhost",
-]);
 
 /**
- * Proxy (ex-middleware no Next.js 16):
+ * Proxy (Next.js 16):
  * 1. /store/{id}/*              → novo formato imutável (ID numérico)
  * 2. /{store}/*                 → legado (slug/subdomínio) — repassa para a página
  * 3. /checkout                  → store do host (custom domain / subdomain)
@@ -32,10 +18,6 @@ const RESERVED = new Set([
 export function proxy(request: NextRequest) {
   const hostname = request.headers.get("host")?.split(":")[0] ?? "";
   const pathname = request.nextUrl.pathname;
-
-  if (RESERVED.has(hostname)) {
-    return NextResponse.next();
-  }
 
   const requestHeaders = new Headers(request.headers);
 
