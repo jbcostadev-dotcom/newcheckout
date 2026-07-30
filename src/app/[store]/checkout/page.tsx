@@ -89,6 +89,22 @@ function CheckoutPageContent() {
   const isPreview = searchParams.get("preview") === "1";
   const productsParam = isPreview ? "1,2" : searchParams.get("products") ?? "";
 
+  // Captura parâmetros de rastreamento (UTMs/src/sck) da URL do checkout.
+  const trackingParameters = useMemo(() => {
+    const get = (k: string) => searchParams.get(k);
+    const params = {
+      src: get("src"),
+      sck: get("sck"),
+      utm_source: get("utm_source"),
+      utm_campaign: get("utm_campaign"),
+      utm_medium: get("utm_medium"),
+      utm_content: get("utm_content"),
+      utm_term: get("utm_term"),
+    };
+    const hasAny = Object.values(params).some((v) => v && v.trim() !== "");
+    return hasAny ? params : null;
+  }, [searchParams]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<CheckoutData | null>(null);
@@ -813,6 +829,7 @@ function CheckoutPageContent() {
         shipping_method_id: selectedShippingMethod?.id ?? null,
         shipping_address: address,
         order_bump_id: selectedOrderBump?.id ?? null,
+        tracking_parameters: trackingParameters,
       };
 
       if (isStoreId) {
