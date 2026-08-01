@@ -4,6 +4,15 @@ import { Suspense, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { apiGet } from "@/lib/api";
 import type { ConfirmedOrderResponse } from "@/types";
+import {
+  loadGoogleAds,
+  trackConversion,
+  shouldFireForProducts,
+  readGoogleAdsConfig,
+  isFired,
+  markFired,
+} from "@/lib/googleAds";
+import GoogleAdsTracking from "@/components/GoogleAdsTracking";
 
 function formatCurrency(value: number): string {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -102,6 +111,38 @@ function ConfirmedContent() {
       try {
         const res = await apiGet<ConfirmedOrderResponse>(`/checkout/order/${orderId}/confirmed`);
         setOrder(res);
+
+        // Dispara a conversão do Google Ads quando o pedido está pago/autorizado.
+        const ga = readGoogleAdsConfig();
+        if (ga?.enabled && ga.pixel_id) {
+          loadGoogleAds(ga.pixel_id);
+          const txnId = String(res.order_id);
+          const productIds = (res.items ?? []).map((it) => it.product_id);
+          const paid = res.status === "paid" || res.status === "authorized";
+          // A página confirmed só é atingida quando o pedido foi pago;
+          // `only_paid_sales=true` é satisfeito pelo simples fato de estarmos aqui.
+          // Carrinho/boleto ainda pendentes não chegam nesta rota.
+          const allowedByFilter = !ga.only_selected_products
+            ? true
+            : shouldFireForProducts(ga, productIds);
+          if (ga.pixel_id && ga.enabled && paid && allowedByFilter && !isFired(txnId)) {
+            trackConversion(
+              { pixel_id: ga.pixel_id, conversion_label: ga.conversion_label },
+              {
+                transaction_id: txnId,
+                value: Number(res.total),
+                currency: "BRL",
+                items: (res.items ?? []).map((it) => ({
+                  id: String(it.product_id),
+                  name: it.name,
+                  quantity: it.qty,
+                  price: Number(it.unit_price),
+                })),
+              }
+            );
+            markFired(txnId);
+          }
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erro ao carregar pedido.");
       } finally {
@@ -191,6 +232,7 @@ function ConfirmedContent() {
       background: "var(--checkout-bg)",
       fontSize: settings.font_size_base || "16px",
     }}>
+      <GoogleAdsTracking config={readGoogleAdsConfig()} />
       {/* Header */}
       <header style={{
         display: "flex",

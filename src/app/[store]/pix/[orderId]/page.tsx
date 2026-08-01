@@ -5,6 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { apiGet } from "@/lib/api";
 import type { PixStatusResponse } from "@/types";
 import PixPaymentView, { type PixPaymentSettings } from "@/components/PixPaymentView";
+import GoogleAdsTracking from "@/components/GoogleAdsTracking";
+import { readGoogleAdsConfig } from "@/lib/googleAds";
 import Loading from "./loading";
 
 const POLL_INTERVAL_MS = 10000;
@@ -136,13 +138,16 @@ function PixPageContent() {
   }
 
   return (
-    <PixPaymentView
-      storeName={data.store_name ?? "Nome da Loja"}
-      total={data.total}
-      copiaECola={data.pix_copia_cola ?? ""}
-      createdAt={data.created_at}
-      expiresAt={data.gateway_expires_at}
-      initialSettings={settings}
-    />
+    <>
+      <GoogleAdsTracking config={readGoogleAdsConfig()} />
+      <PixPaymentView
+        storeName={data.store_name ?? "Nome da Loja"}
+        total={data.total}
+        copiaECola={data.pix_copia_cola ?? ""}
+        createdAt={data.created_at}
+        expiresAt={data.gateway_expires_at}
+        initialSettings={settings}
+      />
+    </>
   );
 }

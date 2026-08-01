@@ -8,6 +8,16 @@ export interface CheckoutProduct {
   image_url?: string | null;
 }
 
+export interface GoogleAdsConfig {
+  enabled: boolean;
+  pixel_id?: string | null;
+  pixel_name?: string | null;
+  conversion_label?: string | null;
+  only_paid_sales?: boolean;
+  only_selected_products?: boolean;
+  selected_product_ids?: number[];
+}
+
 export interface ShippingMethod {
   id: number;
   name: string;
@@ -121,6 +131,7 @@ export interface CheckoutData {
       card: { enabled: boolean; gateway_provider?: string | null; public_key?: string | null; installment_config?: InstallmentConfig };
       boleto: { enabled: boolean; gateway_provider?: string | null; public_key?: string | null };
     };
+    google_ads?: GoogleAdsConfig;
   };
   products: CheckoutProduct[];
   total: number;

@@ -4,6 +4,8 @@ import { Suspense, useEffect, useState, useCallback, useRef, useMemo } from "rea
 import { useParams, useRouter } from "next/navigation";
 import { apiGet } from "@/lib/api";
 import type { PixStatusResponse } from "@/types";
+import GoogleAdsTracking from "@/components/GoogleAdsTracking";
+import { readGoogleAdsConfig } from "@/lib/googleAds";
 import Loading from "../../pix/[orderId]/loading";
 
 const POLL_INTERVAL_MS = 15000;
@@ -108,6 +110,7 @@ function BoletoPageContent() {
         padding: 24,
       }}
     >
+      <GoogleAdsTracking config={readGoogleAdsConfig()} />
       <div
         style={{
           background: "var(--card-bg)",

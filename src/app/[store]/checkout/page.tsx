@@ -31,6 +31,16 @@ import SocialProofs from "@/components/SocialProofs";
 import Footer from "@/components/Footer";
 import ScarcityBar from "@/components/ScarcityBar";
 import { useLiveCheckout } from "@/lib/useLiveCheckout";
+import {
+  loadGoogleAds,
+  trackBeginCheckout,
+  trackConversion,
+  shouldFireForProducts,
+  persistGoogleAdsConfig,
+  markFired,
+  isFired,
+} from "@/lib/googleAds";
+import GoogleAdsTracking from "@/components/GoogleAdsTracking";
 
 type StepId = "dados" | "entrega" | "pagamento";
 
@@ -263,6 +273,9 @@ function CheckoutPageContent() {
         }
         setData(res);
 
+        // Persiste configuração do Google Ads (reisada nas páginas de status).
+        persistGoogleAdsConfig(res.store?.google_ads ?? null);
+
         // Se a URL atual usa slug legado no domínio principal do checkout,
         // redireciona para o novo formato imutável /store/{id}/checkout.
         // Domínios customizados/subdomínios de loja continuam no host original.
@@ -452,6 +465,28 @@ function CheckoutPageContent() {
     };
     return [...groupedItems, { product: bumpProduct, qty: 1 }];
   }, [groupedItems, selectedOrderBump]);
+
+  // Dispara `begin_checkout` assim que o carrinho é montado (uma vez por sessão).
+  useEffect(() => {
+    if (!data || groupedItems.length === 0) return;
+    const ga = data.store?.google_ads;
+    if (!ga?.enabled || !ga.pixel_id) return;
+    loadGoogleAds(ga.pixel_id);
+    const productIds = groupedItems.map((g) => g.product.id);
+    const cartItems = groupedItems.map((g) => ({
+      id: String(g.product.id),
+      name: g.product.name,
+      quantity: g.qty,
+      price: Number(g.product.price),
+    }));
+    trackBeginCheckout({
+      transaction_id: `cart-${data.store.id}-${productIds.join("-")}`,
+      value: displayTotal,
+      currency: "BRL",
+      items: cartItems,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, groupedItems.length]);
 
   const markCompleted = (s: StepId) => {
     setCompleted((prev) => (prev.includes(s) ? prev : [...prev, s]));
@@ -849,6 +884,38 @@ function CheckoutPageContent() {
 
       const res = await apiPost<CheckoutProcessResponse>("/checkout/process", payload);
 
+      // Dispara conversão do Google Ads quando a flag `only_paid_sales` está OFF.
+      // Caso contrário, será disparada na página `confirmed` (status pago).
+      try {
+        const ga = data?.store?.google_ads;
+        if (ga?.enabled && ga.pixel_id && res.order_id) {
+          const productIds = groupedItems.map((g) => g.product.id);
+          const cartItems = [...groupedItems, ...(selectedOrderBump ? [{ product: { ...selectedOrderBump.product, price: selectedOrderBump.product.bump_price }, qty: 1 }] : [])];
+          const txnId = String(res.order_id);
+          const paidNow = res.status === "paid" || res.status === "authorized";
+          if (!ga.only_paid_sales && !isFired(txnId) && shouldFireForProducts(ga, productIds)) {
+            trackConversion(
+              { pixel_id: ga.pixel_id, conversion_label: ga.conversion_label },
+              {
+                transaction_id: txnId,
+                value: Number(displayTotal.toFixed(2)),
+                currency: "BRL",
+                items: cartItems.map((g) => ({
+                  id: String(g.product.id),
+                  name: g.product.name,
+                  quantity: g.qty,
+                  price: Number(g.product.price),
+                })),
+              }
+            );
+            markFired(txnId);
+            void paidNow;
+          }
+        }
+      } catch {
+        // tracking não deve quebrar o checkout
+      }
+
       // Persiste settings visuais para reuso nas páginas de status.
       try {
         sessionStorage.setItem(
@@ -1034,6 +1101,7 @@ function CheckoutPageContent() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--checkout-bg)", fontSize: settings.font_size_base || "16px" }}>
+      <GoogleAdsTracking config={store.google_ads ?? null} />
       {/* ─── Header ─── */}
       <header
         style={{
