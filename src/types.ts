@@ -18,6 +18,17 @@ export interface GoogleAdsConfig {
   selected_product_ids?: number[];
 }
 
+export interface MetaPixelConfig {
+  enabled: boolean;
+  pixel_id?: string | null;
+  browser_enabled?: boolean;
+  capi_enabled?: boolean;
+  only_paid_sales?: boolean;
+  only_selected_products?: boolean;
+  selected_product_ids?: number[];
+  require_consent?: boolean;
+}
+
 export interface ShippingMethod {
   id: number;
   name: string;
@@ -132,6 +143,7 @@ export interface CheckoutData {
       boleto: { enabled: boolean; gateway_provider?: string | null; public_key?: string | null };
     };
     google_ads?: GoogleAdsConfig;
+    meta_pixel?: MetaPixelConfig;
   };
   products: CheckoutProduct[];
   total: number;

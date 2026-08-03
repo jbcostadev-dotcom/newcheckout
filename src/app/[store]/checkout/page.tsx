@@ -41,6 +41,16 @@ import {
   isFired,
 } from "@/lib/googleAds";
 import GoogleAdsTracking from "@/components/GoogleAdsTracking";
+import MetaPixelTracking from "@/components/MetaPixelTracking";
+import {
+  getMetaTrackingParameters,
+  persistMetaPixelConfig,
+  trackMetaEvent,
+  trackMetaBrowserEvent,
+  shouldFireForMetaProducts,
+  createMetaEventId,
+  persistMetaConsent,
+} from "@/lib/metaPixel";
 
 type StepId = "dados" | "entrega" | "pagamento";
 
@@ -110,6 +120,7 @@ function CheckoutPageContent() {
       utm_medium: get("utm_medium"),
       utm_content: get("utm_content"),
       utm_term: get("utm_term"),
+      ...getMetaTrackingParameters(),
     };
     const hasAny = Object.values(params).some((v) => v && v.trim() !== "");
     return hasAny ? params : null;
@@ -192,6 +203,7 @@ function CheckoutPageContent() {
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerDocument, setCustomerDocument] = useState("");
+  const [marketingConsent, setMarketingConsent] = useState(false);
 
   const [address, setAddress] = useState<ShippingAddress>({
     cep: "",
@@ -275,6 +287,7 @@ function CheckoutPageContent() {
 
         // Persiste configuração do Google Ads (reisada nas páginas de status).
         persistGoogleAdsConfig(res.store?.google_ads ?? null);
+        persistMetaPixelConfig(res.store?.meta_pixel ?? null);
 
         // Se a URL atual usa slug legado no domínio principal do checkout,
         // redireciona para o novo formato imutável /store/{id}/checkout.
@@ -470,8 +483,6 @@ function CheckoutPageContent() {
   useEffect(() => {
     if (!data || groupedItems.length === 0) return;
     const ga = data.store?.google_ads;
-    if (!ga?.enabled || !ga.pixel_id) return;
-    loadGoogleAds(ga.pixel_id);
     const productIds = groupedItems.map((g) => g.product.id);
     const cartItems = groupedItems.map((g) => ({
       id: String(g.product.id),
@@ -479,14 +490,32 @@ function CheckoutPageContent() {
       quantity: g.qty,
       price: Number(g.product.price),
     }));
-    trackBeginCheckout({
-      transaction_id: `cart-${data.store.id}-${productIds.join("-")}`,
-      value: displayTotal,
-      currency: "BRL",
-      items: cartItems,
-    });
+    if (ga?.enabled && ga.pixel_id) {
+      loadGoogleAds(ga.pixel_id);
+      trackBeginCheckout({
+        transaction_id: `cart-${data.store.id}-${productIds.join("-")}`,
+        value: displayTotal,
+        currency: "BRL",
+        items: cartItems,
+      });
+    }
+    const meta = data.store?.meta_pixel;
+    if (meta?.enabled && shouldFireForMetaProducts(meta, productIds)) {
+      const metaData = {
+        value: Number(displayTotal.toFixed(2)),
+        currency: "BRL",
+        content_ids: productIds.map(String),
+        contents: cartItems,
+        content_type: "product",
+        num_items: cartItems.reduce((sum, item) => sum + item.quantity, 0),
+      };
+      const eventId = createMetaEventId(`checkout_${data.store.id}`);
+      trackMetaEvent(meta, data.store.id, "ViewContent", { ...metaData, event_id: `${eventId}_view` }, marketingConsent);
+      trackMetaEvent(meta, data.store.id, "AddToCart", { ...metaData, event_id: `${eventId}_cart` }, marketingConsent);
+      trackMetaEvent(meta, data.store.id, "InitiateCheckout", { ...metaData, event_id: eventId }, marketingConsent);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, groupedItems.length]);
+  }, [data, groupedItems.length, marketingConsent]);
 
   const markCompleted = (s: StepId) => {
     setCompleted((prev) => (prev.includes(s) ? prev : [...prev, s]));
@@ -850,6 +879,29 @@ function CheckoutPageContent() {
 
     setProcessing(true);
     try {
+      persistMetaConsent(marketingConsent);
+      const meta = data?.store?.meta_pixel;
+      if (meta?.enabled && shouldFireForMetaProducts(meta, groupedItems.map((g) => g.product.id))) {
+        const metaEventId = createMetaEventId("add_payment_info");
+        trackMetaEvent(meta, data!.store.id, "AddPaymentInfo", {
+          event_id: metaEventId,
+          value: Number(displayTotal.toFixed(2)),
+          currency: "BRL",
+          content_ids: groupedItems.map((g) => String(g.product.id)),
+          contents: groupedItems.map((g) => ({ id: String(g.product.id), quantity: g.qty, item_price: Number(g.product.price) })),
+          content_type: "product",
+          num_items: groupedItems.reduce((sum, g) => sum + g.qty, 0),
+          email: customerEmail.trim(),
+          phone: customerPhone,
+          name: customerName.trim(),
+          city: address.cidade,
+          state: address.uf,
+          zip: address.cep,
+          country: "br",
+          payment_method: pm,
+          installments,
+        }, marketingConsent);
+      }
       const items = groupedItems.map((g) => ({
         product_id: g.product.id,
         qty: g.qty,
@@ -864,7 +916,9 @@ function CheckoutPageContent() {
         shipping_method_id: selectedShippingMethod?.id ?? null,
         shipping_address: address,
         order_bump_id: selectedOrderBump?.id ?? null,
-        tracking_parameters: trackingParameters,
+        tracking_parameters: trackingParameters
+          ? { ...trackingParameters, meta_consent: marketingConsent }
+          : { meta_consent: marketingConsent, ...getMetaTrackingParameters() },
       };
 
       if (isStoreId) {
@@ -1102,6 +1156,7 @@ function CheckoutPageContent() {
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--checkout-bg)", fontSize: settings.font_size_base || "16px" }}>
       <GoogleAdsTracking config={store.google_ads ?? null} />
+      <MetaPixelTracking config={store.meta_pixel ?? null} />
       {/* ─── Header ─── */}
       <header
         style={{
@@ -1305,6 +1360,9 @@ function CheckoutPageContent() {
                 isActive={step === "dados"}
                 isCompleted={completed.includes("dados")}
                 titleFontSize={stepTitleSize}
+                requireMarketingConsent={data?.store.meta_pixel?.require_consent ?? false}
+                marketingConsent={marketingConsent}
+                setMarketingConsent={setMarketingConsent}
               />
             </div>
 

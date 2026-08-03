@@ -13,6 +13,8 @@ import {
   markFired,
 } from "@/lib/googleAds";
 import GoogleAdsTracking from "@/components/GoogleAdsTracking";
+import MetaPixelTracking from "@/components/MetaPixelTracking";
+import { readMetaPixelConfig, readMetaConsent, trackMetaBrowserEvent, isMetaPurchaseFired, markMetaPurchaseFired, shouldFireForMetaProducts } from "@/lib/metaPixel";
 
 function formatCurrency(value: number): string {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -111,6 +113,34 @@ function ConfirmedContent() {
       try {
         const res = await apiGet<ConfirmedOrderResponse>(`/checkout/order/${orderId}/confirmed`);
         setOrder(res);
+
+        const meta = readMetaPixelConfig();
+        const metaProductIds = (res.items ?? []).map((it) => it.product_id);
+        const metaPaid = res.status === "paid" || res.status === "authorized";
+        if (meta && metaPaid && shouldFireForMetaProducts(meta, metaProductIds) && !isMetaPurchaseFired(String(res.order_id))) {
+          trackMetaBrowserEvent(meta, "Purchase", {
+            event_id: `purchase_${res.order_id}`,
+            value: Number(res.total),
+            currency: "BRL",
+            content_ids: metaProductIds.map(String),
+            contents: (res.items ?? []).map((item) => ({
+              id: String(item.product_id),
+              quantity: item.qty,
+              item_price: Number(item.unit_price),
+            })),
+            content_type: "product",
+            num_items: (res.items ?? []).reduce((sum, item) => sum + item.qty, 0),
+            order_id: String(res.order_id),
+            email: res.customer_email,
+            phone: res.customer_phone,
+            name: res.customer_name,
+            city: res.shipping_address.cidade,
+            state: res.shipping_address.uf,
+            zip: res.shipping_address.cep,
+            country: "br",
+          }, readMetaConsent());
+          markMetaPurchaseFired(String(res.order_id));
+        }
 
         // Dispara a conversão do Google Ads quando o pedido está pago/autorizado.
         const ga = readGoogleAdsConfig();
@@ -233,6 +263,7 @@ function ConfirmedContent() {
       fontSize: settings.font_size_base || "16px",
     }}>
       <GoogleAdsTracking config={readGoogleAdsConfig()} />
+      <MetaPixelTracking config={readMetaPixelConfig()} />
       {/* Header */}
       <header style={{
         display: "flex",

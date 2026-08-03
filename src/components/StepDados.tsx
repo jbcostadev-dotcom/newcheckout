@@ -17,6 +17,9 @@ interface StepDadosProps {
   isActive: boolean;
   isCompleted: boolean;
   titleFontSize?: string;
+  requireMarketingConsent?: boolean;
+  marketingConsent?: boolean;
+  setMarketingConsent?: (v: boolean) => void;
 }
 
 export default function StepDados({
@@ -33,6 +36,9 @@ export default function StepDados({
   isActive,
   isCompleted,
   titleFontSize = "1.25rem",
+  requireMarketingConsent = false,
+  marketingConsent = false,
+  setMarketingConsent,
 }: StepDadosProps) {
   const docDigits = onlyDigits(document);
   const phoneDigits = onlyDigits(phone);
@@ -42,7 +48,8 @@ export default function StepDados({
     /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()) &&
     docDigits.length === 11 &&
     cpfIsValid(docDigits) &&
-    phoneDigits.length >= 10;
+    phoneDigits.length >= 10 &&
+    (!requireMarketingConsent || marketingConsent);
 
   const handleContinue = () => {
     if (!canContinue) {
@@ -122,6 +129,18 @@ export default function StepDados({
             onChange={(e) => setName(e.target.value)}
           />
         </div>
+
+        {requireMarketingConsent && (
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+            <input
+              type="checkbox"
+              checked={marketingConsent}
+              onChange={(e) => setMarketingConsent?.(e.target.checked)}
+              style={{ marginTop: 2 }}
+            />
+            <span>Concordo com o uso destes dados para mensuração e melhoria das campanhas desta loja.</span>
+          </label>
+        )}
 
         <div>
           <label className="checkout-label">E-mail</label>
