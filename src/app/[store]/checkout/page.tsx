@@ -42,6 +42,7 @@ import {
 } from "@/lib/googleAds";
 import GoogleAdsTracking from "@/components/GoogleAdsTracking";
 import MetaPixelTracking from "@/components/MetaPixelTracking";
+import TikTokPixelTracking from "@/components/TikTokPixelTracking";
 import {
   getMetaTrackingParameters,
   persistMetaPixelConfig,
@@ -51,6 +52,14 @@ import {
   createMetaEventId,
   persistMetaConsent,
 } from "@/lib/metaPixel";
+import {
+  getTikTokTrackingParameters,
+  persistTikTokPixelConfig,
+  trackTikTokEvent,
+  shouldFireForTikTokProducts,
+  createTikTokEventId,
+  persistTikTokConsent,
+} from "@/lib/tiktokPixel";
 
 type StepId = "dados" | "entrega" | "pagamento";
 
@@ -121,6 +130,7 @@ function CheckoutPageContent() {
       utm_content: get("utm_content"),
       utm_term: get("utm_term"),
       ...getMetaTrackingParameters(),
+      ...getTikTokTrackingParameters(),
     };
     const hasAny = Object.values(params).some((v) => v && v.trim() !== "");
     return hasAny ? params : null;
@@ -288,6 +298,7 @@ function CheckoutPageContent() {
         // Persiste configuração do Google Ads (reisada nas páginas de status).
         persistGoogleAdsConfig(res.store?.google_ads ?? null);
         persistMetaPixelConfig(res.store?.meta_pixel ?? null);
+        persistTikTokPixelConfig(res.store?.tiktok_pixel ?? null);
 
         // Se a URL atual usa slug legado no domínio principal do checkout,
         // redireciona para o novo formato imutável /store/{id}/checkout.
@@ -487,6 +498,9 @@ function CheckoutPageContent() {
     const cartItems = groupedItems.map((g) => ({
       id: String(g.product.id),
       name: g.product.name,
+      content_category: g.product.product_type ?? g.product.parent_title ?? undefined,
+      brand: g.product.vendor ?? undefined,
+      sku: g.product.sku ?? undefined,
       quantity: g.qty,
       price: Number(g.product.price),
     }));
@@ -514,8 +528,59 @@ function CheckoutPageContent() {
       trackMetaEvent(meta, data.store.id, "AddToCart", { ...metaData, event_id: `${eventId}_cart` }, marketingConsent);
       trackMetaEvent(meta, data.store.id, "InitiateCheckout", { ...metaData, event_id: eventId }, marketingConsent);
     }
+    const tiktok = data.store?.tiktok_pixel;
+    if (tiktok?.enabled && shouldFireForTikTokProducts(tiktok, productIds)) {
+      const tiktokData = {
+        value: Number(displayTotal.toFixed(2)),
+        currency: "BRL",
+        content_ids: productIds.map(String),
+        contents: cartItems.map((item) => ({
+          content_id: item.id,
+          content_name: item.name,
+          content_category: item.content_category,
+          brand: item.brand,
+          sku: item.sku,
+          content_type: "product",
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        content_type: "product",
+        quantity: cartItems.reduce((sum, item) => sum + item.quantity, 0),
+        shipping_price: Number(shippingPrice.toFixed(2)),
+        coupon: appliedCoupon?.coupon.code,
+      };
+      const eventId = createTikTokEventId(`checkout_${data.store.id}`);
+      trackTikTokEvent(tiktok, data.store.id, "ViewContent", { ...tiktokData, event_id: `${eventId}_view` }, marketingConsent);
+      trackTikTokEvent(tiktok, data.store.id, "AddToCart", { ...tiktokData, event_id: `${eventId}_cart` }, marketingConsent);
+      trackTikTokEvent(tiktok, data.store.id, "InitiateCheckout", { ...tiktokData, event_id: eventId }, marketingConsent);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, groupedItems.length, marketingConsent]);
+
+  // Order bump é uma adição real ao carrinho: registra o AddToCart adicional
+  // com os dados do item e um event_id próprio para não duplicar o funil inicial.
+  useEffect(() => {
+    if (!data || !selectedOrderBump) return;
+    const tiktok = data.store?.tiktok_pixel;
+    const productIds = [...groupedItems.map((g) => g.product.id), selectedOrderBump.product.id];
+    if (!tiktok?.enabled || !shouldFireForTikTokProducts(tiktok, productIds)) return;
+    trackTikTokEvent(tiktok, data.store.id, "AddToCart", {
+      event_id: createTikTokEventId(`order_bump_${selectedOrderBump.id}`),
+      value: Number(displayTotal.toFixed(2)),
+      currency: "BRL",
+      content_id: String(selectedOrderBump.product.id),
+      content_ids: productIds.map(String),
+      contents: [{
+        content_id: String(selectedOrderBump.product.id),
+        content_name: selectedOrderBump.product.name,
+        content_type: "product",
+        quantity: 1,
+        price: Number(selectedOrderBump.product.bump_price),
+      }],
+      content_type: "product",
+      quantity: 1,
+    }, marketingConsent);
+  }, [data, selectedOrderBump?.id, marketingConsent]);
 
   const markCompleted = (s: StepId) => {
     setCompleted((prev) => (prev.includes(s) ? prev : [...prev, s]));
@@ -880,6 +945,7 @@ function CheckoutPageContent() {
     setProcessing(true);
     try {
       persistMetaConsent(marketingConsent);
+      persistTikTokConsent(marketingConsent);
       const meta = data?.store?.meta_pixel;
       if (meta?.enabled && shouldFireForMetaProducts(meta, groupedItems.map((g) => g.product.id))) {
         const metaEventId = createMetaEventId("add_payment_info");
@@ -902,6 +968,34 @@ function CheckoutPageContent() {
           installments,
         }, marketingConsent);
       }
+      const tiktok = data?.store?.tiktok_pixel;
+      if (tiktok?.enabled && shouldFireForTikTokProducts(tiktok, groupedItems.map((g) => g.product.id))) {
+        const tiktokEventId = createTikTokEventId("add_payment_info");
+        trackTikTokEvent(tiktok, data!.store.id, "AddPaymentInfo", {
+          event_id: tiktokEventId,
+          value: Number(displayTotal.toFixed(2)),
+          currency: "BRL",
+          content_ids: groupedItems.map((g) => String(g.product.id)),
+          contents: groupedItems.map((g) => ({
+            content_id: String(g.product.id),
+            content_name: g.product.name,
+            content_category: g.product.product_type ?? g.product.parent_title ?? undefined,
+            brand: g.product.vendor ?? undefined,
+            sku: g.product.sku ?? undefined,
+            content_type: "product",
+            quantity: g.qty,
+            price: Number(g.product.price),
+          })),
+          content_type: "product",
+          quantity: groupedItems.reduce((sum, g) => sum + g.qty, 0),
+          email: customerEmail.trim(),
+          phone: customerPhone,
+          payment_method: pm,
+          installments,
+          shipping_price: Number(shippingPrice.toFixed(2)),
+          coupon: appliedCoupon?.coupon.code,
+        }, marketingConsent);
+      }
       const items = groupedItems.map((g) => ({
         product_id: g.product.id,
         qty: g.qty,
@@ -916,9 +1010,14 @@ function CheckoutPageContent() {
         shipping_method_id: selectedShippingMethod?.id ?? null,
         shipping_address: address,
         order_bump_id: selectedOrderBump?.id ?? null,
-        tracking_parameters: trackingParameters
-          ? { ...trackingParameters, meta_consent: marketingConsent }
-          : { meta_consent: marketingConsent, ...getMetaTrackingParameters() },
+        tracking_parameters: {
+          ...(trackingParameters ?? {}),
+          ...getMetaTrackingParameters(),
+          ...getTikTokTrackingParameters(),
+          meta_consent: marketingConsent,
+          tiktok_consent: marketingConsent,
+          coupon: appliedCoupon?.coupon.code ?? null,
+        },
       };
 
       if (isStoreId) {
@@ -1157,6 +1256,7 @@ function CheckoutPageContent() {
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--checkout-bg)", fontSize: settings.font_size_base || "16px" }}>
       <GoogleAdsTracking config={store.google_ads ?? null} />
       <MetaPixelTracking config={store.meta_pixel ?? null} />
+      <TikTokPixelTracking config={store.tiktok_pixel ?? null} />
       {/* ─── Header ─── */}
       <header
         style={{
@@ -1360,7 +1460,7 @@ function CheckoutPageContent() {
                 isActive={step === "dados"}
                 isCompleted={completed.includes("dados")}
                 titleFontSize={stepTitleSize}
-                requireMarketingConsent={data?.store.meta_pixel?.require_consent ?? false}
+                requireMarketingConsent={Boolean(data?.store.meta_pixel?.require_consent || data?.store.tiktok_pixel?.require_consent)}
                 marketingConsent={marketingConsent}
                 setMarketingConsent={setMarketingConsent}
               />

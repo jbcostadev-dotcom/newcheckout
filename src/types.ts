@@ -4,6 +4,10 @@ export interface CheckoutProduct {
   parent_title?: string | null;
   attributes?: { name: string; value: string }[] | null;
   description?: string | null;
+  sku?: string | null;
+  product_type?: string | null;
+  vendor?: string | null;
+  tags?: string[] | null;
   price: number;
   image_url?: string | null;
 }
@@ -23,6 +27,17 @@ export interface MetaPixelConfig {
   pixel_id?: string | null;
   browser_enabled?: boolean;
   capi_enabled?: boolean;
+  only_paid_sales?: boolean;
+  only_selected_products?: boolean;
+  selected_product_ids?: number[];
+  require_consent?: boolean;
+}
+
+export interface TikTokPixelConfig {
+  enabled: boolean;
+  pixel_code?: string | null;
+  browser_enabled?: boolean;
+  events_api_enabled?: boolean;
   only_paid_sales?: boolean;
   only_selected_products?: boolean;
   selected_product_ids?: number[];
@@ -144,6 +159,7 @@ export interface CheckoutData {
     };
     google_ads?: GoogleAdsConfig;
     meta_pixel?: MetaPixelConfig;
+    tiktok_pixel?: TikTokPixelConfig;
   };
   products: CheckoutProduct[];
   total: number;
@@ -291,6 +307,9 @@ export interface ConfirmedOrderItem {
   qty: number;
   total: number;
   image_url?: string | null;
+  product_type?: string | null;
+  vendor?: string | null;
+  sku?: string | null;
 }
 
 export interface ConfirmedOrderAddress {
