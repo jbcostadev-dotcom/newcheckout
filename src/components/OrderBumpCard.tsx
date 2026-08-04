@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { OrderBumpOffer } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 
@@ -12,6 +12,21 @@ interface OrderBumpCardProps {
 
 export default function OrderBumpCard({ bump, selected, onToggle }: OrderBumpCardProps) {
   const { product } = bump;
+
+  const timerEnabled = Boolean(bump.scarcity_timer_enabled);
+  const timerDurationSeconds = Math.max(1, Number(bump.scarcity_timer_minutes) || 10) * 60;
+  const [timeLeft, setTimeLeft] = useState(timerDurationSeconds);
+
+  useEffect(() => {
+    if (!timerEnabled) return;
+
+    setTimeLeft(timerDurationSeconds);
+    const intervalId = window.setInterval(() => {
+      setTimeLeft((current) => Math.max(0, current - 1));
+    }, 1000);
+
+    return () => window.clearInterval(intervalId);
+  }, [bump.id, timerEnabled, timerDurationSeconds]);
 
   const handleClick = () => onToggle(!selected);
 
@@ -35,13 +50,56 @@ export default function OrderBumpCard({ bump, selected, onToggle }: OrderBumpCar
         position: "relative",
         opacity: selected ? 1 : 0.95,
         transition: "border-color 0.15s ease, transform 0.05s ease",
+        overflow: "hidden",
       }}
     >
       {/* Indicador de seleção no canto superior */}
+      {timerEnabled && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+            margin: "-14px -14px 14px",
+            padding: "8px 10px",
+            background: bump.button_color,
+            color: bump.button_text_color,
+            fontSize: "0.62rem",
+            fontWeight: 800,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+          }}
+        >
+          <span style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="m13 2-9 12h7l-1 8 9-12h-7l1-8Z" />
+            </svg>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              Oferta especial para você
+            </span>
+          </span>
+          <span
+            style={{
+              flexShrink: 0,
+              borderRadius: 999,
+              padding: "3px 8px",
+              background: "rgba(0, 0, 0, 0.16)",
+              fontFamily: "monospace",
+              fontSize: "0.72rem",
+              letterSpacing: "0.03em",
+              textTransform: "none",
+            }}
+          >
+            {formatCountdown(timeLeft)}
+          </span>
+        </div>
+      )}
+
       <div
         style={{
           position: "absolute",
-          top: 10,
+          top: timerEnabled ? 48 : 10,
           right: 10,
           width: 22,
           height: 22,
@@ -177,4 +235,10 @@ export default function OrderBumpCard({ bump, selected, onToggle }: OrderBumpCar
       </div>
     </div>
   );
+}
+
+function formatCountdown(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }

@@ -117,6 +117,8 @@ export interface OrderBumpOffer {
   button_color: string;
   button_text_color: string;
   button_label: string;
+  scarcity_timer_enabled: boolean;
+  scarcity_timer_minutes: number;
 }
 
 export interface InstallmentConfig {
