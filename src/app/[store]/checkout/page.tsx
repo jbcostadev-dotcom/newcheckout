@@ -43,6 +43,8 @@ import {
 import GoogleAdsTracking from "@/components/GoogleAdsTracking";
 import MetaPixelTracking from "@/components/MetaPixelTracking";
 import TikTokPixelTracking from "@/components/TikTokPixelTracking";
+import KwaiPixelTracking from "@/components/KwaiPixelTracking";
+import TaboolaPixelTracking from "@/components/TaboolaPixelTracking";
 import {
   getMetaTrackingParameters,
   persistMetaPixelConfig,
@@ -60,6 +62,22 @@ import {
   createTikTokEventId,
   persistTikTokConsent,
 } from "@/lib/tiktokPixel";
+import {
+  getKwaiTrackingParameters,
+  persistKwaiPixelConfig,
+  trackKwaiEvent,
+  shouldFireForKwaiProducts,
+  createKwaiEventId,
+  persistKwaiConsent,
+} from "@/lib/kwaiPixel";
+import {
+  getTaboolaTrackingParameters,
+  persistTaboolaPixelConfig,
+  trackTaboolaEvent,
+  shouldFireForTaboolaProducts,
+  createTaboolaEventId,
+  persistTaboolaConsent,
+} from "@/lib/taboolaPixel";
 
 type StepId = "dados" | "entrega" | "pagamento";
 
@@ -131,6 +149,8 @@ function CheckoutPageContent() {
       utm_term: get("utm_term"),
       ...getMetaTrackingParameters(),
       ...getTikTokTrackingParameters(),
+      ...getKwaiTrackingParameters(),
+      ...getTaboolaTrackingParameters(),
     };
     const hasAny = Object.values(params).some((v) => v && v.trim() !== "");
     return hasAny ? params : null;
@@ -299,6 +319,8 @@ function CheckoutPageContent() {
         persistGoogleAdsConfig(res.store?.google_ads ?? null);
         persistMetaPixelConfig(res.store?.meta_pixel ?? null);
         persistTikTokPixelConfig(res.store?.tiktok_pixel ?? null);
+        persistKwaiPixelConfig(res.store?.kwai_pixel ?? null);
+        persistTaboolaPixelConfig(res.store?.taboola_pixel ?? null);
 
         // Se a URL atual usa slug legado no domínio principal do checkout,
         // redireciona para o novo formato imutável /store/{id}/checkout.
@@ -554,6 +576,47 @@ function CheckoutPageContent() {
       trackTikTokEvent(tiktok, data.store.id, "AddToCart", { ...tiktokData, event_id: `${eventId}_cart` }, marketingConsent);
       trackTikTokEvent(tiktok, data.store.id, "InitiateCheckout", { ...tiktokData, event_id: eventId }, marketingConsent);
     }
+    const kwai = data.store?.kwai_pixel;
+    if (kwai?.enabled && shouldFireForKwaiProducts(kwai, productIds)) {
+      const kwaiData = {
+        value: Number(displayTotal.toFixed(2)),
+        currency: "BRL",
+        content_ids: productIds.map(String),
+        contents: cartItems.map((item) => ({
+          content_id: item.id,
+          content_name: item.name,
+          content_category: item.content_category,
+          brand: item.brand,
+          sku: item.sku,
+          content_type: "product",
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        content_type: "product",
+        quantity: cartItems.reduce((sum, item) => sum + item.quantity, 0),
+        shipping_price: Number(shippingPrice.toFixed(2)),
+        coupon: appliedCoupon?.coupon.code,
+      };
+      const eventId = createKwaiEventId(`checkout_${data.store.id}`);
+      trackKwaiEvent(kwai, data.store.id, "ViewContent", { ...kwaiData, event_id: `${eventId}_view` }, marketingConsent);
+      trackKwaiEvent(kwai, data.store.id, "AddToCart", { ...kwaiData, event_id: `${eventId}_cart` }, marketingConsent);
+      trackKwaiEvent(kwai, data.store.id, "InitiateCheckout", { ...kwaiData, event_id: eventId }, marketingConsent);
+    }
+    const taboola = data.store?.taboola_pixel;
+    if (taboola?.enabled && shouldFireForTaboolaProducts(taboola, productIds)) {
+      const taboolaData = {
+        value: Number(displayTotal.toFixed(2)), currency: "BRL",
+        content_ids: productIds.map(String), contents: cartItems.map((item) => ({
+          content_id: item.id, content_name: item.name, content_category: item.content_category,
+          brand: item.brand, sku: item.sku, quantity: item.quantity, price: item.price,
+        })), quantity: cartItems.reduce((sum, item) => sum + item.quantity, 0),
+        shipping_price: Number(shippingPrice.toFixed(2)), coupon: appliedCoupon?.coupon.code,
+      };
+      const eventId = createTaboolaEventId(`checkout_${data.store.id}`);
+      trackTaboolaEvent(taboola, data.store.id, "ViewContent", { ...taboolaData, event_id: `${eventId}_view` }, marketingConsent);
+      trackTaboolaEvent(taboola, data.store.id, "AddToCart", { ...taboolaData, event_id: `${eventId}_cart` }, marketingConsent);
+      trackTaboolaEvent(taboola, data.store.id, "InitiateCheckout", { ...taboolaData, event_id: eventId }, marketingConsent);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, groupedItems.length, marketingConsent]);
 
@@ -563,23 +626,31 @@ function CheckoutPageContent() {
     if (!data || !selectedOrderBump) return;
     const tiktok = data.store?.tiktok_pixel;
     const productIds = [...groupedItems.map((g) => g.product.id), selectedOrderBump.product.id];
-    if (!tiktok?.enabled || !shouldFireForTikTokProducts(tiktok, productIds)) return;
-    trackTikTokEvent(tiktok, data.store.id, "AddToCart", {
-      event_id: createTikTokEventId(`order_bump_${selectedOrderBump.id}`),
-      value: Number(displayTotal.toFixed(2)),
-      currency: "BRL",
-      content_id: String(selectedOrderBump.product.id),
-      content_ids: productIds.map(String),
-      contents: [{
-        content_id: String(selectedOrderBump.product.id),
-        content_name: selectedOrderBump.product.name,
-        content_type: "product",
-        quantity: 1,
-        price: Number(selectedOrderBump.product.bump_price),
-      }],
-      content_type: "product",
-      quantity: 1,
-    }, marketingConsent);
+    if (tiktok?.enabled && shouldFireForTikTokProducts(tiktok, productIds)) {
+      trackTikTokEvent(tiktok, data.store.id, "AddToCart", {
+        event_id: createTikTokEventId(`order_bump_${selectedOrderBump.id}`), value: Number(displayTotal.toFixed(2)), currency: "BRL",
+        content_id: String(selectedOrderBump.product.id), content_ids: productIds.map(String),
+        contents: [{ content_id: String(selectedOrderBump.product.id), content_name: selectedOrderBump.product.name, content_type: "product", quantity: 1, price: Number(selectedOrderBump.product.bump_price) }],
+        content_type: "product", quantity: 1,
+      }, marketingConsent);
+    }
+    const kwai = data.store?.kwai_pixel;
+    if (kwai?.enabled && shouldFireForKwaiProducts(kwai, productIds)) {
+      trackKwaiEvent(kwai, data.store.id, "AddToCart", {
+        event_id: createKwaiEventId(`order_bump_${selectedOrderBump.id}`), value: Number(displayTotal.toFixed(2)), currency: "BRL",
+        content_id: String(selectedOrderBump.product.id), content_ids: productIds.map(String),
+        contents: [{ content_id: String(selectedOrderBump.product.id), content_name: selectedOrderBump.product.name, content_type: "product", quantity: 1, price: Number(selectedOrderBump.product.bump_price) }],
+        content_type: "product", quantity: 1,
+      }, marketingConsent);
+    }
+    const taboola = data.store?.taboola_pixel;
+    if (taboola?.enabled && shouldFireForTaboolaProducts(taboola, productIds)) {
+      trackTaboolaEvent(taboola, data.store.id, "AddToCart", {
+        event_id: createTaboolaEventId(`order_bump_${selectedOrderBump.id}`), value: Number(displayTotal.toFixed(2)), currency: "BRL",
+        content_id: String(selectedOrderBump.product.id), content_ids: productIds.map(String), quantity: 1,
+        contents: [{ content_id: String(selectedOrderBump.product.id), content_name: selectedOrderBump.product.name, quantity: 1, price: Number(selectedOrderBump.product.bump_price) }],
+      }, marketingConsent);
+    }
   }, [data, selectedOrderBump?.id, marketingConsent]);
 
   const markCompleted = (s: StepId) => {
@@ -946,6 +1017,8 @@ function CheckoutPageContent() {
     try {
       persistMetaConsent(marketingConsent);
       persistTikTokConsent(marketingConsent);
+      persistKwaiConsent(marketingConsent);
+      persistTaboolaConsent(marketingConsent);
       const meta = data?.store?.meta_pixel;
       if (meta?.enabled && shouldFireForMetaProducts(meta, groupedItems.map((g) => g.product.id))) {
         const metaEventId = createMetaEventId("add_payment_info");
@@ -996,6 +1069,34 @@ function CheckoutPageContent() {
           coupon: appliedCoupon?.coupon.code,
         }, marketingConsent);
       }
+      const kwai = data?.store?.kwai_pixel;
+      if (kwai?.enabled && shouldFireForKwaiProducts(kwai, groupedItems.map((g) => g.product.id))) {
+        const kwaiEventId = createKwaiEventId("add_payment_info");
+        trackKwaiEvent(kwai, data!.store.id, "AddPaymentInfo", {
+          event_id: kwaiEventId,
+          value: Number(displayTotal.toFixed(2)), currency: "BRL",
+          content_ids: groupedItems.map((g) => String(g.product.id)),
+          contents: groupedItems.map((g) => ({
+            content_id: String(g.product.id), content_name: g.product.name,
+            content_category: g.product.product_type ?? g.product.parent_title ?? undefined,
+            brand: g.product.vendor ?? undefined, sku: g.product.sku ?? undefined,
+            content_type: "product", quantity: g.qty, price: Number(g.product.price),
+          })),
+          content_type: "product", quantity: groupedItems.reduce((sum, g) => sum + g.qty, 0),
+          email: customerEmail.trim(), phone: customerPhone, payment_method: pm,
+          installments, shipping_price: Number(shippingPrice.toFixed(2)), coupon: appliedCoupon?.coupon.code,
+        }, marketingConsent);
+      }
+      const taboola = data?.store?.taboola_pixel;
+      if (taboola?.enabled && shouldFireForTaboolaProducts(taboola, groupedItems.map((g) => g.product.id))) {
+        const taboolaEventId = createTaboolaEventId("add_payment_info");
+        trackTaboolaEvent(taboola, data!.store.id, "AddPaymentInfo", {
+          event_id: taboolaEventId, value: Number(displayTotal.toFixed(2)), currency: "BRL",
+          content_ids: groupedItems.map((g) => String(g.product.id)), quantity: groupedItems.reduce((sum, g) => sum + g.qty, 0),
+          contents: groupedItems.map((g) => ({ content_id: String(g.product.id), content_name: g.product.name, content_category: g.product.product_type ?? g.product.parent_title ?? undefined, brand: g.product.vendor ?? undefined, sku: g.product.sku ?? undefined, quantity: g.qty, price: Number(g.product.price) })),
+          email: customerEmail.trim(), payment_method: pm, installments, shipping_price: Number(shippingPrice.toFixed(2)), coupon: appliedCoupon?.coupon.code,
+        }, marketingConsent);
+      }
       const items = groupedItems.map((g) => ({
         product_id: g.product.id,
         qty: g.qty,
@@ -1014,8 +1115,12 @@ function CheckoutPageContent() {
           ...(trackingParameters ?? {}),
           ...getMetaTrackingParameters(),
           ...getTikTokTrackingParameters(),
+          ...getKwaiTrackingParameters(),
+          ...getTaboolaTrackingParameters(),
           meta_consent: marketingConsent,
           tiktok_consent: marketingConsent,
+          kwai_consent: marketingConsent,
+          taboola_consent: marketingConsent,
           coupon: appliedCoupon?.coupon.code ?? null,
         },
       };
@@ -1257,6 +1362,8 @@ function CheckoutPageContent() {
       <GoogleAdsTracking config={store.google_ads ?? null} />
       <MetaPixelTracking config={store.meta_pixel ?? null} />
       <TikTokPixelTracking config={store.tiktok_pixel ?? null} />
+      <KwaiPixelTracking config={store.kwai_pixel ?? null} />
+      <TaboolaPixelTracking config={store.taboola_pixel ?? null} />
       {/* ─── Header ─── */}
       <header
         style={{
@@ -1460,7 +1567,7 @@ function CheckoutPageContent() {
                 isActive={step === "dados"}
                 isCompleted={completed.includes("dados")}
                 titleFontSize={stepTitleSize}
-                requireMarketingConsent={Boolean(data?.store.meta_pixel?.require_consent || data?.store.tiktok_pixel?.require_consent)}
+                requireMarketingConsent={Boolean(data?.store.meta_pixel?.require_consent || data?.store.tiktok_pixel?.require_consent || data?.store.kwai_pixel?.require_consent || data?.store.taboola_pixel?.require_consent)}
                 marketingConsent={marketingConsent}
                 setMarketingConsent={setMarketingConsent}
               />

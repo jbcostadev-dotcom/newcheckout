@@ -44,6 +44,34 @@ export interface TikTokPixelConfig {
   require_consent?: boolean;
 }
 
+export interface KwaiPixelConfig {
+  enabled: boolean;
+  pixel_code?: string | null;
+  browser_enabled?: boolean;
+  events_api_enabled?: boolean;
+  only_paid_sales?: boolean;
+  only_selected_products?: boolean;
+  selected_product_ids?: number[];
+  require_consent?: boolean;
+}
+
+export interface TaboolaPixelConfig {
+  enabled: boolean;
+  account_id?: string | null;
+  browser_enabled?: boolean;
+  s2s_enabled?: boolean;
+  only_paid_sales?: boolean;
+  only_selected_products?: boolean;
+  selected_product_ids?: number[];
+  require_consent?: boolean;
+  page_view_event_name?: string;
+  view_content_event_name?: string;
+  add_to_cart_event_name?: string;
+  initiate_checkout_event_name?: string;
+  add_payment_info_event_name?: string;
+  purchase_event_name?: string;
+}
+
 export interface ShippingMethod {
   id: number;
   name: string;
@@ -160,6 +188,8 @@ export interface CheckoutData {
     google_ads?: GoogleAdsConfig;
     meta_pixel?: MetaPixelConfig;
     tiktok_pixel?: TikTokPixelConfig;
+    kwai_pixel?: KwaiPixelConfig;
+    taboola_pixel?: TaboolaPixelConfig;
   };
   products: CheckoutProduct[];
   total: number;
