@@ -29,10 +29,10 @@ export default function ScarcityBar({ type, text, title, countdownMinutes = 20 }
   if (type === "countdown") {
     return (
       <div style={{ padding: "24px 16px 22px", background: "#fff", color: "#000", textAlign: "center" }}>
-        <div style={{ fontSize: "1.45rem", fontWeight: 700, marginBottom: 18 }}>
+        <div style={{ fontSize: "1.45rem", fontWeight: 700, marginBottom: 12 }}>
           {title || "Frete grátis apenas hoje!"}
         </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: "1.1rem" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: "1rem" }}>
           <span>{text || "Você precisa finalizar seu pedido em até"}</span>
           <span style={{ background: "#000", borderRadius: 4, color: "#fff", fontVariantNumeric: "tabular-nums", fontWeight: 700, fontSize: "1rem", padding: "3px 7px" }}>
             {formatTime(secondsLeft)}

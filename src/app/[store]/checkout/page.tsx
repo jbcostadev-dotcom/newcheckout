@@ -1432,6 +1432,15 @@ function CheckoutPageContent() {
       )}
 
       {/* ─── Banner Image ─── */}
+      {settings.scarcity_enabled && (
+        <ScarcityBar
+          type={(settings.scarcity_type as "countdown" | "stock" | "visitors") || "countdown"}
+          text={settings.scarcity_text}
+          title={settings.scarcity_title}
+          countdownMinutes={settings.scarcity_countdown_minutes || 20}
+        />
+      )}
+
       {settings.banner_url && (
         <div
           className="checkout-banner-wrapper"
@@ -1465,15 +1474,6 @@ function CheckoutPageContent() {
       )}
 
       {/* ── Scarcity Bar ─── */}
-      {settings.scarcity_enabled && (
-        <ScarcityBar
-          type={(settings.scarcity_type as "countdown" | "stock" | "visitors") || "countdown"}
-          text={settings.scarcity_text}
-          title={settings.scarcity_title}
-          countdownMinutes={settings.scarcity_countdown_minutes || 20}
-        />
-      )}
-
       {/* ─── Order Paid Success ─── */}
       {orderPaid ? (
         <div style={{
