@@ -1438,6 +1438,9 @@ function CheckoutPageContent() {
           text={settings.scarcity_text}
           title={settings.scarcity_title}
           countdownMinutes={settings.scarcity_countdown_minutes || 20}
+          fontColor={settings.scarcity_font_color}
+          counterColor={settings.scarcity_counter_color}
+          counterTextColor={settings.scarcity_counter_text_color}
         />
       )}
 

@@ -7,6 +7,9 @@ interface ScarcityBarProps {
   text?: string | null;
   title?: string | null;
   countdownMinutes?: number;
+  fontColor?: string | null;
+  counterColor?: string | null;
+  counterTextColor?: string | null;
 }
 
 function formatTime(totalSeconds: number) {
@@ -15,7 +18,15 @@ function formatTime(totalSeconds: number) {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-export default function ScarcityBar({ type, text, title, countdownMinutes = 20 }: ScarcityBarProps) {
+export default function ScarcityBar({
+  type,
+  text,
+  title,
+  countdownMinutes = 20,
+  fontColor = "#000000",
+  counterColor = "#000000",
+  counterTextColor = "#ffffff",
+}: ScarcityBarProps) {
   const [secondsLeft, setSecondsLeft] = useState(countdownMinutes * 60);
   const [visitors] = useState(() => Math.floor(Math.random() * 30) + 15);
 
@@ -28,13 +39,13 @@ export default function ScarcityBar({ type, text, title, countdownMinutes = 20 }
 
   if (type === "countdown") {
     return (
-      <div style={{ padding: "24px 16px 22px", background: "#fff", color: "#000", textAlign: "center" }}>
+      <div style={{ padding: "24px 16px 22px", background: "#fff", color: fontColor || "#000000", textAlign: "center" }}>
         <div style={{ fontSize: "1.45rem", fontWeight: 700, marginBottom: 12 }}>
           {title || "Frete grátis apenas hoje!"}
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: "1rem" }}>
           <span>{text || "Finalize seu pedido em até"}</span>
-          <span style={{ background: "#000", borderRadius: 4, color: "#fff", fontVariantNumeric: "tabular-nums", fontWeight: 700, fontSize: "1rem", padding: "3px 7px" }}>
+          <span style={{ background: counterColor || "#000000", borderRadius: 4, color: counterTextColor || "#ffffff", fontVariantNumeric: "tabular-nums", fontWeight: 700, fontSize: "1rem", padding: "3px 7px" }}>
             {formatTime(secondsLeft)}
           </span>
         </div>

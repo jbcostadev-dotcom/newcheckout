@@ -166,6 +166,9 @@ export interface CheckoutData {
       scarcity_text?: string | null;
       scarcity_title?: string | null;
       scarcity_countdown_minutes?: number;
+      scarcity_font_color?: string;
+      scarcity_counter_color?: string;
+      scarcity_counter_text_color?: string;
       pix_confirmation_title?: string;
       pix_confirmation_message?: string | null;
       pix_confirmation_logo?: string | null;
