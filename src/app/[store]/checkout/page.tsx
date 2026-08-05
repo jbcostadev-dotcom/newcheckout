@@ -1456,7 +1456,8 @@ function CheckoutPageContent() {
         <ScarcityBar
           type={(settings.scarcity_type as "countdown" | "stock" | "visitors") || "countdown"}
           text={settings.scarcity_text}
-          countdownMinutes={settings.scarcity_countdown_minutes || 15}
+          title={settings.scarcity_title}
+          countdownMinutes={settings.scarcity_countdown_minutes || 20}
         />
       )}
 
