@@ -153,6 +153,7 @@ export interface CheckoutData {
       announcement_bar_bg?: string;
       announcement_bar_text_color?: string;
       summary_title?: string;
+      summary_default_expanded?: boolean;
       summary_show_discount?: boolean;
       summary_coupon_enabled?: boolean;
       step_title_font_size?: string;

@@ -17,6 +17,7 @@ interface OrderSummaryProps {
   onQtyChange?: (productId: number, delta: number) => void;
   discount?: number;
   title?: string;
+  defaultExpanded?: boolean;
   showDiscount?: boolean;
   couponEnabled?: boolean;
   onApplyCoupon?: (code: string) => Promise<void>;
@@ -34,6 +35,7 @@ export default function OrderSummary({
   onQtyChange,
   discount = 0,
   title = "Resumo do pedido",
+  defaultExpanded = true,
   showDiscount = true,
   couponEnabled = true,
   onApplyCoupon,
@@ -45,7 +47,7 @@ export default function OrderSummary({
   const finalTotal = total - discount;
   const productTotal = subtotal !== undefined ? subtotal : total - shipping;
 
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [isMobile, setIsMobile] = useState(false);
   const [couponInput, setCouponInput] = useState("");
   const [showInput, setShowInput] = useState(false);
@@ -56,6 +58,10 @@ export default function OrderSummary({
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  useEffect(() => {
+    setIsExpanded(defaultExpanded);
+  }, [defaultExpanded]);
 
   const showContent = !isMobile || isExpanded;
 
@@ -82,7 +88,7 @@ export default function OrderSummary({
           }}
         >
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <span style={{ fontSize: "1.1rem", fontWeight: 700 }}>Seu carrinho</span>
+            <span style={{ fontSize: "1.1rem", fontWeight: 700 }}>{title}</span>
             <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>Informações da sua compra</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto", flexShrink: 0 }}>
