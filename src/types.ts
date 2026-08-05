@@ -156,6 +156,11 @@ export interface CheckoutData {
       summary_show_discount?: boolean;
       summary_coupon_enabled?: boolean;
       step_title_font_size?: string;
+      step_number_color?: string;
+      input_border_radius?: "none" | "medium" | "large";
+      step_button_color?: string;
+      finalize_button_color?: string;
+      step_card_background_color?: string | null;
       scarcity_enabled?: boolean;
       scarcity_type?: string;
       scarcity_text?: string | null;

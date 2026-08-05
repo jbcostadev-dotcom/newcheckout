@@ -402,6 +402,14 @@ function CheckoutPageContent() {
       root.style.setProperty("--badge-green-text", s.primary_color);
     }
 
+    root.style.setProperty("--step-number-color", s.step_number_color || "#000000");
+    root.style.setProperty("--step-button-color", s.step_button_color || "#1b7a2b");
+    root.style.setProperty("--finalize-button-color", s.finalize_button_color || "#1a3a5c");
+    root.style.setProperty(
+      "--input-border-radius",
+      s.input_border_radius === "none" ? "0" : s.input_border_radius === "large" ? "16px" : "8px"
+    );
+
     if (s.dark_mode) {
       root.style.setProperty("--checkout-bg", "#0a0a1a");
       root.style.setProperty("--card-bg", "rgba(255,255,255,0.05)");
@@ -421,6 +429,11 @@ function CheckoutPageContent() {
       root.style.setProperty("--input-bg", "#ffffff");
       root.style.setProperty("--header-banner-bg", "#333333");
     }
+
+    root.style.setProperty(
+      "--step-card-bg",
+      s.step_card_background_color || (s.dark_mode ? "rgba(255,255,255,0.05)" : "#ffffff")
+    );
   }, [effectiveSettings]);
 
   const groupedItems: GroupedItem[] = data
