@@ -33,7 +33,7 @@ export default function ScarcityBar({ type, text, title, countdownMinutes = 20 }
           {title || "Frete grátis apenas hoje!"}
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: "1rem" }}>
-          <span>{text || "Você precisa finalizar seu pedido em até"}</span>
+          <span>{text || "Finalize seu pedido em até"}</span>
           <span style={{ background: "#000", borderRadius: 4, color: "#fff", fontVariantNumeric: "tabular-nums", fontWeight: 700, fontSize: "1rem", padding: "3px 7px" }}>
             {formatTime(secondsLeft)}
           </span>
