@@ -950,14 +950,9 @@ function CheckoutPageContent() {
     }
 
       // Pré-calcula descontos para aplicá-los no payload (checkout já exibe preço com desconto).
-      const methodDiscountPct = pm === "pix" ? 1 : pm === "credit_card" ? 5 : 0;
-      const finalAmount = displayTotal * (1 - methodDiscountPct / 100);
-
       // A API calcula o total a partir dos itens + frete (sem desconto por método).
       // Para honrar o desconto exibido, repassamos como redução proporcional via
       // metadata; o backend hoje ignora. Fluxo atual: API decide total sozinha.
-      void finalAmount;
-
       if (isPreview) {
         if (pm === "pix" || pm === "boleto") {
           try {
@@ -1313,7 +1308,14 @@ function CheckoutPageContent() {
   const { store } = data;
   const settings = effectiveSettings;
 
-  const discountPct = paymentMethod === "pix" ? 1 : 5;
+  const pixDiscount = Number(settings.pix_discount_percentage ?? 1);
+  const boletoDiscount = Number(settings.boleto_discount_percentage ?? 0);
+  const cardDiscount = Number(settings.card_discount_percentage ?? 5);
+  const discountPct = paymentMethod === "pix"
+    ? pixDiscount
+    : paymentMethod === "boleto"
+      ? boletoDiscount
+      : cardDiscount;
   const discountValue = displayTotal * (discountPct / 100);
 
   const bannerHeightPx =
@@ -1622,6 +1624,9 @@ function CheckoutPageContent() {
               buttonText={settings.button_text || "Finalizar Compra"}
               isActive={step === "pagamento"}
               total={displayTotal}
+              pixDiscount={pixDiscount}
+              boletoDiscount={boletoDiscount}
+              cardDiscount={cardDiscount}
               titleFontSize={stepTitleSize}
               sdkReady={true}
               sdkError={null}
