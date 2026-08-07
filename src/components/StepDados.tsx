@@ -42,6 +42,7 @@ export default function StepDados({
 }: StepDadosProps) {
   const docDigits = onlyDigits(document);
   const phoneDigits = onlyDigits(phone);
+  const hasInvalidCpf = docDigits.length === 11 && !cpfIsValid(docDigits);
 
   const canContinue =
     name.trim().length >= 3 &&
@@ -162,22 +163,26 @@ export default function StepDados({
           </label>
           <input
             type="text"
-            className="checkout-input"
+            className={`checkout-input ${hasInvalidCpf ? "checkout-input-error" : ""}`}
             placeholder="000.000.000-00"
             value={document}
             onChange={(e) => setDocument(maskCpf(e.target.value))}
           />
+          {hasInvalidCpf && <p className="checkout-field-error">Digite um CPF válido</p>}
         </div>
 
         <div>
           <label className="checkout-label">Celular/Whatsapp</label>
-          <input
-            type="tel"
-            className="checkout-input"
-            placeholder="+55  (00) 00000-0000"
-            value={phone}
-            onChange={(e) => setPhone(maskCelular(e.target.value))}
-          />
+          <div className="checkout-phone-field">
+            <span className="checkout-phone-prefix" aria-hidden="true">+55</span>
+            <input
+              type="tel"
+              className="checkout-input checkout-phone-input"
+              placeholder="(00) 00000-0000"
+              value={phone}
+              onChange={(e) => setPhone(maskCelular(e.target.value))}
+            />
+          </div>
         </div>
       </div>
 

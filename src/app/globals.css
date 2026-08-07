@@ -91,6 +91,40 @@ body {
   padding-right: 40px;
 }
 
+.checkout-input.checkout-input-error {
+  border-color: #e11d48;
+}
+
+.checkout-input.checkout-input-error:focus {
+  border-color: #e11d48;
+  box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.1);
+}
+
+.checkout-field-error {
+  margin-top: 6px;
+  color: #e11d48;
+  font-size: 0.8rem;
+}
+
+.checkout-phone-field {
+  position: relative;
+}
+
+.checkout-phone-prefix {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  z-index: 1;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.checkout-phone-input {
+  padding-left: 52px;
+}
+
 /* ─── Step Card Styles ─── */
 .step-card {
   background: var(--step-card-bg);
