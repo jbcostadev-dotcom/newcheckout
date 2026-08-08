@@ -267,6 +267,7 @@ function CheckoutPageContent() {
   const [completed, setCompleted] = useState<StepId[]>([]);
 
   const [orderPaid, setOrderPaid] = useState(false);
+  const [quantityAdjustments, setQuantityAdjustments] = useState<Record<number, number>>({});
 
   const [modalCardRefused, setModalCardRefused] = useState(false);
   const [modalCardLimit, setModalCardLimit] = useState(false);
@@ -436,15 +437,46 @@ function CheckoutPageContent() {
     );
   }, [effectiveSettings]);
 
-  const groupedItems: GroupedItem[] = data
-    ? groupProductsByIds(
-        data.products,
-        productsParam
-          .split(",")
-          .map((s) => parseInt(s.trim(), 10))
-          .filter((n) => !isNaN(n))
-      )
-    : [];
+  const baseGroupedItems = useMemo(
+    () =>
+      data
+        ? groupProductsByIds(
+            data.products,
+            productsParam
+              .split(",")
+              .map((s) => parseInt(s.trim(), 10))
+              .filter((n) => !isNaN(n))
+          )
+        : [],
+    [data, productsParam]
+  );
+
+  const groupedItems = useMemo(
+    () =>
+      baseGroupedItems.map((item) => ({
+        ...item,
+        qty: item.qty + (quantityAdjustments[item.product.id] ?? 0),
+      })),
+    [baseGroupedItems, quantityAdjustments]
+  );
+
+  useEffect(() => {
+    setQuantityAdjustments({});
+  }, [productsParam]);
+
+  const handleQuantityChange = useCallback(
+    (productId: number, delta: number) => {
+      if (delta === 0 || !baseGroupedItems.some((item) => item.product.id === productId)) return;
+
+      setQuantityAdjustments((previous) => {
+        const current = previous[productId] ?? 0;
+        const next = Math.max(0, current + delta);
+        if (next === current) return previous;
+        return { ...previous, [productId]: next };
+      });
+    },
+    [baseGroupedItems]
+  );
 
   const subtotal = groupedItems.reduce(
     (sum, g) => sum + Number(g.product.price) * g.qty,
@@ -478,6 +510,18 @@ function CheckoutPageContent() {
   const subtotalWithBump = subtotal + orderBumpPrice;
 
   const displayTotal = subtotalWithBump + shippingPrice - couponDiscount;
+
+  useEffect(() => {
+    if (!appliedCoupon) return;
+
+    const base = subtotalWithBump + shippingPrice;
+    const discount =
+      appliedCoupon.coupon.discount_type === "percent"
+        ? base * (appliedCoupon.coupon.discount_value / 100)
+        : appliedCoupon.coupon.discount_value;
+
+    setCouponDiscount(Math.min(discount, base));
+  }, [appliedCoupon, subtotalWithBump, shippingPrice]);
 
   // ── Live checkout heartbeat ───────────────────────────────────────
   useLiveCheckout(
@@ -1666,6 +1710,11 @@ function CheckoutPageContent() {
                 appliedCoupon={appliedCoupon}
                 applyingCoupon={applyingCoupon}
                 couponError={couponError}
+                onQtyChange={
+                  settings.quantity_selector_enabled ?? true
+                    ? handleQuantityChange
+                    : undefined
+                }
               />
             </div>
 

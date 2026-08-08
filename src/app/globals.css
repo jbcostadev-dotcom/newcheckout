@@ -297,15 +297,17 @@ body {
 .qty-controls {
   display: flex;
   align-items: center;
+  width: 118px;
+  height: 40px;
   gap: 0;
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
 .qty-btn {
-  width: 28px;
-  height: 28px;
+  width: 38px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -313,7 +315,7 @@ body {
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 1.1rem;
   transition: background 0.15s ease;
 }
 
@@ -322,12 +324,12 @@ body {
 }
 
 .qty-value {
-  width: 28px;
-  height: 28px;
+  flex: 1;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 600;
   border-left: 1px solid var(--border-color);
   border-right: 1px solid var(--border-color);

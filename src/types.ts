@@ -157,6 +157,7 @@ export interface CheckoutData {
       summary_default_expanded?: boolean;
       summary_show_discount?: boolean;
       summary_coupon_enabled?: boolean;
+      quantity_selector_enabled?: boolean;
       step_title_font_size?: string;
       step_number_color?: string;
       input_border_radius?: "none" | "medium" | "large";
