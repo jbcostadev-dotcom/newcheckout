@@ -14,13 +14,13 @@ import {
 } from "@/lib/googleAds";
 import GoogleAdsTracking from "@/components/GoogleAdsTracking";
 import MetaPixelTracking from "@/components/MetaPixelTracking";
-import { readMetaPixelConfig, readMetaConsent, trackMetaBrowserEvent, isMetaPurchaseFired, markMetaPurchaseFired, shouldFireForMetaProducts } from "@/lib/metaPixel";
+import { readMetaPixelConfig, trackMetaBrowserEvent, isMetaPurchaseFired, markMetaPurchaseFired, shouldFireForMetaProducts } from "@/lib/metaPixel";
 import TikTokPixelTracking from "@/components/TikTokPixelTracking";
-import { readTikTokPixelConfig, readTikTokConsent, trackTikTokBrowserEvent, isTikTokPurchaseFired, markTikTokPurchaseFired, shouldFireForTikTokProducts } from "@/lib/tiktokPixel";
+import { readTikTokPixelConfig, trackTikTokBrowserEvent, isTikTokPurchaseFired, markTikTokPurchaseFired, shouldFireForTikTokProducts } from "@/lib/tiktokPixel";
 import KwaiPixelTracking from "@/components/KwaiPixelTracking";
-import { readKwaiPixelConfig, readKwaiConsent, trackKwaiBrowserEvent, isKwaiPurchaseFired, markKwaiPurchaseFired, shouldFireForKwaiProducts } from "@/lib/kwaiPixel";
+import { readKwaiPixelConfig, trackKwaiBrowserEvent, isKwaiPurchaseFired, markKwaiPurchaseFired, shouldFireForKwaiProducts } from "@/lib/kwaiPixel";
 import TaboolaPixelTracking from "@/components/TaboolaPixelTracking";
-import { readTaboolaPixelConfig, readTaboolaConsent, trackTaboolaBrowserEvent, isTaboolaPurchaseFired, markTaboolaPurchaseFired, shouldFireForTaboolaProducts } from "@/lib/taboolaPixel";
+import { readTaboolaPixelConfig, trackTaboolaBrowserEvent, isTaboolaPurchaseFired, markTaboolaPurchaseFired, shouldFireForTaboolaProducts } from "@/lib/taboolaPixel";
 
 function formatCurrency(value: number): string {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -144,7 +144,7 @@ function ConfirmedContent() {
             state: res.shipping_address.uf,
             zip: res.shipping_address.cep,
             country: "br",
-          }, readMetaConsent());
+          }, true);
           markMetaPurchaseFired(String(res.order_id));
         }
 
@@ -172,7 +172,7 @@ function ConfirmedContent() {
             email: res.customer_email,
             phone: res.customer_phone,
             shipping_price: Number(res.shipping_price ?? 0),
-          }, readTikTokConsent());
+          }, true);
           markTikTokPurchaseFired(String(res.order_id));
         }
 
@@ -192,7 +192,7 @@ function ConfirmedContent() {
             order_id: String(res.order_id), email: res.customer_email, phone: res.customer_phone,
             shipping_price: Number(res.shipping_price ?? 0), payment_method: res.payment_method,
             installments: res.installments,
-          }, readKwaiConsent());
+          }, true);
           markKwaiPurchaseFired(String(res.order_id));
         }
 
@@ -211,7 +211,7 @@ function ConfirmedContent() {
             quantity: (res.items ?? []).reduce((sum, item) => sum + item.qty, 0),
             order_id: String(res.order_id), email: res.customer_email,
             shipping_price: Number(res.shipping_price ?? 0), payment_method: res.payment_method,
-          }, readTaboolaConsent());
+          }, true);
           markTaboolaPurchaseFired(String(res.order_id));
         }
 

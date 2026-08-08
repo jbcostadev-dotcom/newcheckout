@@ -52,7 +52,6 @@ import {
   trackMetaBrowserEvent,
   shouldFireForMetaProducts,
   createMetaEventId,
-  persistMetaConsent,
 } from "@/lib/metaPixel";
 import {
   getTikTokTrackingParameters,
@@ -60,7 +59,6 @@ import {
   trackTikTokEvent,
   shouldFireForTikTokProducts,
   createTikTokEventId,
-  persistTikTokConsent,
 } from "@/lib/tiktokPixel";
 import {
   getKwaiTrackingParameters,
@@ -68,7 +66,6 @@ import {
   trackKwaiEvent,
   shouldFireForKwaiProducts,
   createKwaiEventId,
-  persistKwaiConsent,
 } from "@/lib/kwaiPixel";
 import {
   getTaboolaTrackingParameters,
@@ -76,7 +73,6 @@ import {
   trackTaboolaEvent,
   shouldFireForTaboolaProducts,
   createTaboolaEventId,
-  persistTaboolaConsent,
 } from "@/lib/taboolaPixel";
 
 type StepId = "dados" | "entrega" | "pagamento";
@@ -270,7 +266,6 @@ function CheckoutPageContent() {
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerDocument, setCustomerDocument] = useState("");
-  const [marketingConsent, setMarketingConsent] = useState(false);
 
   const [address, setAddress] = useState<ShippingAddress>({
     cep: "",
@@ -652,9 +647,9 @@ function CheckoutPageContent() {
         num_items: cartItems.reduce((sum, item) => sum + item.quantity, 0),
       };
       const eventId = createMetaEventId(`checkout_${data.store.id}`);
-      trackMetaEvent(meta, data.store.id, "ViewContent", { ...metaData, event_id: `${eventId}_view` }, marketingConsent);
-      trackMetaEvent(meta, data.store.id, "AddToCart", { ...metaData, event_id: `${eventId}_cart` }, marketingConsent);
-      trackMetaEvent(meta, data.store.id, "InitiateCheckout", { ...metaData, event_id: eventId }, marketingConsent);
+      trackMetaEvent(meta, data.store.id, "ViewContent", { ...metaData, event_id: `${eventId}_view` }, true);
+      trackMetaEvent(meta, data.store.id, "AddToCart", { ...metaData, event_id: `${eventId}_cart` }, true);
+      trackMetaEvent(meta, data.store.id, "InitiateCheckout", { ...metaData, event_id: eventId }, true);
     }
     const tiktok = data.store?.tiktok_pixel;
     if (tiktok?.enabled && shouldFireForTikTokProducts(tiktok, productIds)) {
@@ -678,9 +673,9 @@ function CheckoutPageContent() {
         coupon: appliedCoupon?.coupon.code,
       };
       const eventId = createTikTokEventId(`checkout_${data.store.id}`);
-      trackTikTokEvent(tiktok, data.store.id, "ViewContent", { ...tiktokData, event_id: `${eventId}_view` }, marketingConsent);
-      trackTikTokEvent(tiktok, data.store.id, "AddToCart", { ...tiktokData, event_id: `${eventId}_cart` }, marketingConsent);
-      trackTikTokEvent(tiktok, data.store.id, "InitiateCheckout", { ...tiktokData, event_id: eventId }, marketingConsent);
+      trackTikTokEvent(tiktok, data.store.id, "ViewContent", { ...tiktokData, event_id: `${eventId}_view` }, true);
+      trackTikTokEvent(tiktok, data.store.id, "AddToCart", { ...tiktokData, event_id: `${eventId}_cart` }, true);
+      trackTikTokEvent(tiktok, data.store.id, "InitiateCheckout", { ...tiktokData, event_id: eventId }, true);
     }
     const kwai = data.store?.kwai_pixel;
     if (kwai?.enabled && shouldFireForKwaiProducts(kwai, productIds)) {
@@ -704,9 +699,9 @@ function CheckoutPageContent() {
         coupon: appliedCoupon?.coupon.code,
       };
       const eventId = createKwaiEventId(`checkout_${data.store.id}`);
-      trackKwaiEvent(kwai, data.store.id, "ViewContent", { ...kwaiData, event_id: `${eventId}_view` }, marketingConsent);
-      trackKwaiEvent(kwai, data.store.id, "AddToCart", { ...kwaiData, event_id: `${eventId}_cart` }, marketingConsent);
-      trackKwaiEvent(kwai, data.store.id, "InitiateCheckout", { ...kwaiData, event_id: eventId }, marketingConsent);
+      trackKwaiEvent(kwai, data.store.id, "ViewContent", { ...kwaiData, event_id: `${eventId}_view` }, true);
+      trackKwaiEvent(kwai, data.store.id, "AddToCart", { ...kwaiData, event_id: `${eventId}_cart` }, true);
+      trackKwaiEvent(kwai, data.store.id, "InitiateCheckout", { ...kwaiData, event_id: eventId }, true);
     }
     const taboola = data.store?.taboola_pixel;
     if (taboola?.enabled && shouldFireForTaboolaProducts(taboola, productIds)) {
@@ -719,12 +714,12 @@ function CheckoutPageContent() {
         shipping_price: Number(shippingPrice.toFixed(2)), coupon: appliedCoupon?.coupon.code,
       };
       const eventId = createTaboolaEventId(`checkout_${data.store.id}`);
-      trackTaboolaEvent(taboola, data.store.id, "ViewContent", { ...taboolaData, event_id: `${eventId}_view` }, marketingConsent);
-      trackTaboolaEvent(taboola, data.store.id, "AddToCart", { ...taboolaData, event_id: `${eventId}_cart` }, marketingConsent);
-      trackTaboolaEvent(taboola, data.store.id, "InitiateCheckout", { ...taboolaData, event_id: eventId }, marketingConsent);
+      trackTaboolaEvent(taboola, data.store.id, "ViewContent", { ...taboolaData, event_id: `${eventId}_view` }, true);
+      trackTaboolaEvent(taboola, data.store.id, "AddToCart", { ...taboolaData, event_id: `${eventId}_cart` }, true);
+      trackTaboolaEvent(taboola, data.store.id, "InitiateCheckout", { ...taboolaData, event_id: eventId }, true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, groupedItems.length, marketingConsent]);
+  }, [data, groupedItems.length]);
 
   // Order bump é uma adição real ao carrinho: registra o AddToCart adicional
   // com os dados do item e um event_id próprio para não duplicar o funil inicial.
@@ -738,7 +733,7 @@ function CheckoutPageContent() {
         content_id: String(selectedOrderBump.product.id), content_ids: productIds.map(String),
         contents: [{ content_id: String(selectedOrderBump.product.id), content_name: selectedOrderBump.product.name, content_type: "product", quantity: 1, price: Number(selectedOrderBump.product.bump_price) }],
         content_type: "product", quantity: 1,
-      }, marketingConsent);
+      }, true);
     }
     const kwai = data.store?.kwai_pixel;
     if (kwai?.enabled && shouldFireForKwaiProducts(kwai, productIds)) {
@@ -747,7 +742,7 @@ function CheckoutPageContent() {
         content_id: String(selectedOrderBump.product.id), content_ids: productIds.map(String),
         contents: [{ content_id: String(selectedOrderBump.product.id), content_name: selectedOrderBump.product.name, content_type: "product", quantity: 1, price: Number(selectedOrderBump.product.bump_price) }],
         content_type: "product", quantity: 1,
-      }, marketingConsent);
+      }, true);
     }
     const taboola = data.store?.taboola_pixel;
     if (taboola?.enabled && shouldFireForTaboolaProducts(taboola, productIds)) {
@@ -755,9 +750,9 @@ function CheckoutPageContent() {
         event_id: createTaboolaEventId(`order_bump_${selectedOrderBump.id}`), value: Number(displayTotal.toFixed(2)), currency: "BRL",
         content_id: String(selectedOrderBump.product.id), content_ids: productIds.map(String), quantity: 1,
         contents: [{ content_id: String(selectedOrderBump.product.id), content_name: selectedOrderBump.product.name, quantity: 1, price: Number(selectedOrderBump.product.bump_price) }],
-      }, marketingConsent);
+      }, true);
     }
-  }, [data, selectedOrderBump?.id, marketingConsent]);
+  }, [data, selectedOrderBump?.id]);
 
   const markCompleted = (s: StepId) => {
     setCompleted((prev) => (prev.includes(s) ? prev : [...prev, s]));
@@ -1116,10 +1111,6 @@ function CheckoutPageContent() {
 
     setProcessing(true);
     try {
-      persistMetaConsent(marketingConsent);
-      persistTikTokConsent(marketingConsent);
-      persistKwaiConsent(marketingConsent);
-      persistTaboolaConsent(marketingConsent);
       const meta = data?.store?.meta_pixel;
       if (meta?.enabled && shouldFireForMetaProducts(meta, groupedItems.map((g) => g.product.id))) {
         const metaEventId = createMetaEventId("add_payment_info");
@@ -1140,7 +1131,7 @@ function CheckoutPageContent() {
           country: "br",
           payment_method: pm,
           installments,
-        }, marketingConsent);
+        }, true);
       }
       const tiktok = data?.store?.tiktok_pixel;
       if (tiktok?.enabled && shouldFireForTikTokProducts(tiktok, groupedItems.map((g) => g.product.id))) {
@@ -1168,7 +1159,7 @@ function CheckoutPageContent() {
           installments,
           shipping_price: Number(shippingPrice.toFixed(2)),
           coupon: appliedCoupon?.coupon.code,
-        }, marketingConsent);
+        }, true);
       }
       const kwai = data?.store?.kwai_pixel;
       if (kwai?.enabled && shouldFireForKwaiProducts(kwai, groupedItems.map((g) => g.product.id))) {
@@ -1186,7 +1177,7 @@ function CheckoutPageContent() {
           content_type: "product", quantity: groupedItems.reduce((sum, g) => sum + g.qty, 0),
           email: customerEmail.trim(), phone: customerPhone, payment_method: pm,
           installments, shipping_price: Number(shippingPrice.toFixed(2)), coupon: appliedCoupon?.coupon.code,
-        }, marketingConsent);
+        }, true);
       }
       const taboola = data?.store?.taboola_pixel;
       if (taboola?.enabled && shouldFireForTaboolaProducts(taboola, groupedItems.map((g) => g.product.id))) {
@@ -1196,7 +1187,7 @@ function CheckoutPageContent() {
           content_ids: groupedItems.map((g) => String(g.product.id)), quantity: groupedItems.reduce((sum, g) => sum + g.qty, 0),
           contents: groupedItems.map((g) => ({ content_id: String(g.product.id), content_name: g.product.name, content_category: g.product.product_type ?? g.product.parent_title ?? undefined, brand: g.product.vendor ?? undefined, sku: g.product.sku ?? undefined, quantity: g.qty, price: Number(g.product.price) })),
           email: customerEmail.trim(), payment_method: pm, installments, shipping_price: Number(shippingPrice.toFixed(2)), coupon: appliedCoupon?.coupon.code,
-        }, marketingConsent);
+        }, true);
       }
       const items = groupedItems.map((g) => ({
         product_id: g.product.id,
@@ -1218,10 +1209,10 @@ function CheckoutPageContent() {
           ...getTikTokTrackingParameters(),
           ...getKwaiTrackingParameters(),
           ...getTaboolaTrackingParameters(),
-          meta_consent: marketingConsent,
-          tiktok_consent: marketingConsent,
-          kwai_consent: marketingConsent,
-          taboola_consent: marketingConsent,
+          meta_consent: true,
+          tiktok_consent: true,
+          kwai_consent: true,
+          taboola_consent: true,
           coupon: appliedCoupon?.coupon.code ?? null,
         },
       };
@@ -1679,9 +1670,6 @@ function CheckoutPageContent() {
                 isActive={step === "dados"}
                 isCompleted={completed.includes("dados")}
                 titleFontSize={stepTitleSize}
-                requireMarketingConsent={Boolean(data?.store.meta_pixel?.require_consent || data?.store.tiktok_pixel?.require_consent || data?.store.kwai_pixel?.require_consent || data?.store.taboola_pixel?.require_consent)}
-                marketingConsent={marketingConsent}
-                setMarketingConsent={setMarketingConsent}
               />
             </div>
 
