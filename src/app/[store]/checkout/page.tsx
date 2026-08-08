@@ -186,8 +186,25 @@ function CheckoutPageContent() {
 
   const installmentConfig = useMemo((): InstallmentConfig | undefined => {
     const pm = data?.store.payment_methods;
-    return pm?.card?.installment_config ?? undefined;
-  }, [data]);
+    const config = pm?.card?.installment_config;
+    if (!config) return undefined;
+
+    const limit = Math.max(
+      1,
+      Math.min(12, Number(liveSettings.card_installment_limit ?? config.limit))
+    );
+    const preSelected = Math.max(
+      1,
+      Math.min(limit, Number(liveSettings.card_pre_selected_installment ?? config.pre_selected))
+    );
+
+    return {
+      ...config,
+      limit,
+      pre_selected: preSelected,
+      interest_free: Math.min(limit, config.interest_free),
+    };
+  }, [data, liveSettings.card_installment_limit, liveSettings.card_pre_selected_installment]);
 
   const [hasAutoSelected, setHasAutoSelected] = useState(false);
   useEffect(() => {
@@ -216,6 +233,20 @@ function CheckoutPageContent() {
   // Atualiza pré-seleção ao vivo no modo preview
   useEffect(() => {
     if (!isPreview) return;
+    const limit = Number(liveSettings.card_installment_limit);
+    const preSelected = Number(liveSettings.card_pre_selected_installment);
+    if (preSelected > 0) {
+      setCard((previous) => ({
+        ...previous,
+        installments: Math.min(preSelected, limit > 0 ? limit : 12),
+      }));
+    } else if (limit > 0) {
+      setCard((previous) => ({
+        ...previous,
+        installments: Math.min(previous.installments, limit),
+      }));
+    }
+
     const configured = liveSettings.default_payment_method;
     if (!configured) return;
     const desired: "pix" | "credit_card" | "boleto" =
@@ -227,7 +258,13 @@ function CheckoutPageContent() {
     } else if (desired === "credit_card" && enabledMethods.card) {
       setPaymentMethod("credit_card");
     }
-  }, [isPreview, liveSettings?.default_payment_method, enabledMethods]);
+  }, [
+    isPreview,
+    liveSettings?.default_payment_method,
+    liveSettings?.card_pre_selected_installment,
+    liveSettings?.card_installment_limit,
+    enabledMethods,
+  ]);
 
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -483,8 +520,14 @@ function CheckoutPageContent() {
     0
   );
 
+  const shippingAddressComplete =
+    address.cep.replace(/\D+/g, "").length === 8 &&
+    address.logradouro.trim().length >= 3 &&
+    address.numero.trim().length > 0 &&
+    address.bairro.trim().length >= 2;
+
   const shippingPrice = useMemo(() => {
-    if (!selectedShippingMethod) return 0;
+    if (!shippingAddressComplete || !selectedShippingMethod) return 0;
     if (
       selectedShippingMethod.price === null ||
       selectedShippingMethod.price === undefined
@@ -505,7 +548,13 @@ function CheckoutPageContent() {
       return 0;
     }
     return selectedShippingMethod.price;
-  }, [selectedShippingMethod, subtotal, appliedCoupon]);
+  }, [shippingAddressComplete, selectedShippingMethod, subtotal, appliedCoupon]);
+
+  const shippingSummaryMessage = !shippingAddressComplete
+    ? "Inserir endereço"
+    : !selectedShippingMethod
+      ? "Selecione o frete"
+      : null;
 
   const subtotalWithBump = subtotal + orderBumpPrice;
 
@@ -1699,6 +1748,7 @@ function CheckoutPageContent() {
                 items={summaryItems}
                 subtotal={subtotalWithBump}
                 shipping={shippingPrice}
+                shippingMessage={shippingSummaryMessage}
                 total={subtotalWithBump + shippingPrice}
                 discount={couponDiscount + (step === "pagamento" ? discountValue : 0)}
                 title={settings.summary_title || "Resumo do pedido"}

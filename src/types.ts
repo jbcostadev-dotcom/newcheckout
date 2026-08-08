@@ -191,6 +191,8 @@ export interface CheckoutData {
       font_size_base?: string;
       social_proofs_enabled?: boolean;
       default_payment_method?: "credit_card" | "pix" | "boleto";
+      card_pre_selected_installment?: number;
+      card_installment_limit?: number;
       pix_discount_percentage?: number;
       boleto_discount_percentage?: number;
       card_discount_percentage?: number;

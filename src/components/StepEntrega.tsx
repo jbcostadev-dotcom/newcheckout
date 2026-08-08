@@ -58,20 +58,15 @@ export default function StepEntrega({
     address.numero.trim().length > 0 &&
     address.bairro.trim().length >= 2;
 
-  // Pré-seleciona o primeiro frete quando a lista chega ou só existe um.
+  // Exige que o cliente escolha o frete após informar o endereço.
   useEffect(() => {
-    if (shippingMethods.length === 0) {
-      setSelectedShippingMethod(null);
-      return;
-    }
-
     if (
-      !selectedShippingMethod ||
-      !shippingMethods.find((m) => m.id === selectedShippingMethod.id)
+      selectedShippingMethod &&
+      (!addressComplete || !shippingMethods.some((method) => method.id === selectedShippingMethod.id))
     ) {
-      setSelectedShippingMethod(shippingMethods[0]);
+      setSelectedShippingMethod(null);
     }
-  }, [shippingMethods, selectedShippingMethod, setSelectedShippingMethod]);
+  }, [addressComplete, shippingMethods, selectedShippingMethod, setSelectedShippingMethod]);
 
   const handleCepChange = (value: string) => {
     const v = maskCep(value);

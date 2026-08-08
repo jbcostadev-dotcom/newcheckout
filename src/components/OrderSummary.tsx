@@ -13,6 +13,7 @@ interface OrderSummaryProps {
   items: GroupedItem[];
   subtotal?: number;
   shipping?: number;
+  shippingMessage?: string | null;
   total: number;
   onQtyChange?: (productId: number, delta: number) => void;
   discount?: number;
@@ -32,6 +33,7 @@ export default function OrderSummary({
   items,
   subtotal,
   shipping = 0,
+  shippingMessage = null,
   total,
   onQtyChange,
   discount = 0,
@@ -223,12 +225,12 @@ export default function OrderSummary({
           <span>Produtos</span>
           <span>{formatCurrency(productTotal)}</span>
         </div>
-        {shipping > 0 && (
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}>
-            <span>Frete</span>
-            <span>{formatCurrency(shipping)}</span>
-          </div>
-        )}
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}>
+          <span>Frete</span>
+          <span style={shippingMessage ? { color: "var(--text-muted)" } : undefined}>
+            {shippingMessage ?? (shipping > 0 ? formatCurrency(shipping) : "Grátis")}
+          </span>
+        </div>
         {showDiscount && discount > 0 && (
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }}>
             <span>Descontos</span>
@@ -317,7 +319,7 @@ export default function OrderSummary({
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-              <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>
+              <span style={{ fontSize: "0.95rem", fontWeight: 600 }}>
                 {formatCurrency(Number(g.product.price) * g.qty)}
               </span>
               {onQtyChange && (
