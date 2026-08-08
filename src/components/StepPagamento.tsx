@@ -15,6 +15,21 @@ import { formatCurrency } from "@/lib/utils";
 import type { CardData, InstallmentConfig, OrderBumpOffer } from "@/types";
 import OrderBumpCard from "@/components/OrderBumpCard";
 
+const carouselArrowStyle: React.CSSProperties = {
+  width: 34,
+  height: 34,
+  borderRadius: "50%",
+  border: "1px solid var(--input-border, #d1d5db)",
+  background: "var(--card-bg, #ffffff)",
+  color: "var(--text-primary)",
+  cursor: "pointer",
+  fontSize: "1.6rem",
+  lineHeight: 1,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
 interface StepPagamentoProps {
   paymentMethod: "pix" | "credit_card" | "boleto";
   setPaymentMethod: (v: "pix" | "credit_card" | "boleto") => void;
@@ -37,6 +52,7 @@ interface StepPagamentoProps {
   enabledMethods?: { pix: boolean; card: boolean; boleto: boolean };
   installmentConfig?: InstallmentConfig;
   orderBumps?: OrderBumpOffer[];
+  orderBumpDisplayMode?: "stacked" | "carousel";
   selectedOrderBumpId?: number | null;
   onToggleOrderBump?: (id: number, selected: boolean) => void;
 }
@@ -63,10 +79,14 @@ export default function StepPagamento({
   enabledMethods = { pix: true, card: true, boleto: true },
   installmentConfig,
   orderBumps = [],
+  orderBumpDisplayMode = "stacked",
   selectedOrderBumpId,
   onToggleOrderBump,
 }: StepPagamentoProps) {
   const [cardNumberBlurred, setCardNumberBlurred] = useState(false);
+  const [carouselIndexByMethod, setCarouselIndexByMethod] = useState<
+    Record<"pix" | "credit_card" | "boleto", number>
+  >({ pix: 0, credit_card: 0, boleto: 0 });
 
   const cardNumberDigits = card.number.replace(/\D+/g, "");
   const cardBrand = getCardBrand(cardNumberDigits);
@@ -155,16 +175,62 @@ export default function StepPagamento({
     });
     if (visible.length === 0) return null;
 
+    if (orderBumpDisplayMode !== "carousel" || visible.length === 1) {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, margin: "16px 0" }}>
+          {visible.map((bump) => (
+            <OrderBumpCard
+              key={bump.id}
+              bump={bump}
+              selected={selectedOrderBumpId === bump.id}
+              onToggle={(sel) => onToggleOrderBump?.(bump.id, sel)}
+            />
+          ))}
+        </div>
+      );
+    }
+
+    const currentIndex = (carouselIndexByMethod[method] ?? 0) % visible.length;
+    const currentBump = visible[currentIndex];
+    const goTo = (direction: -1 | 1) => {
+      setCarouselIndexByMethod((previous) => ({
+        ...previous,
+        [method]: (currentIndex + direction + visible.length) % visible.length,
+      }));
+    };
+
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, margin: "16px 0" }}>
-        {visible.map((bump) => (
+      <div style={{ margin: "16px 0" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "34px minmax(0, 1fr) 34px", alignItems: "center", gap: 8 }}>
+          <button
+            type="button"
+            aria-label="Oferta anterior"
+            onClick={() => goTo(-1)}
+            style={carouselArrowStyle}
+          >
+            &#8249;
+          </button>
           <OrderBumpCard
-            key={bump.id}
-            bump={bump}
-            selected={selectedOrderBumpId === bump.id}
-            onToggle={(sel) => onToggleOrderBump?.(bump.id, sel)}
+            key={currentBump.id}
+            bump={currentBump}
+            selected={selectedOrderBumpId === currentBump.id}
+            onToggle={(selected) => {
+              onToggleOrderBump?.(currentBump.id, selected);
+              if (selected) goTo(1);
+            }}
           />
-        ))}
+          <button
+            type="button"
+            aria-label="Próxima oferta"
+            onClick={() => goTo(1)}
+            style={carouselArrowStyle}
+          >
+            &#8250;
+          </button>
+        </div>
+        <p style={{ marginTop: 8, textAlign: "center", color: "var(--text-secondary)", fontSize: "0.72rem" }}>
+          Oferta {currentIndex + 1} de {visible.length}
+        </p>
       </div>
     );
   };

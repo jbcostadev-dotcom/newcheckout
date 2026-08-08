@@ -1677,6 +1677,7 @@ function CheckoutPageContent() {
               enabledMethods={enabledMethods}
               installmentConfig={installmentConfig}
               orderBumps={data?.order_bumps ?? []}
+              orderBumpDisplayMode={settings.order_bump_display_mode ?? "stacked"}
               selectedOrderBumpId={selectedOrderBumpId}
               onToggleOrderBump={(id, sel) =>
                 setSelectedOrderBumpId(sel ? id : null)

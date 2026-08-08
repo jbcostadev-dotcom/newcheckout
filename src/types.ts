@@ -144,6 +144,9 @@ export interface CheckoutData {
       button_text?: string;
       banner_message?: string;
       enable_order_bump: boolean;
+      order_bump_display_mode?: "stacked" | "carousel";
+      order_bump_scarcity_timer_enabled?: boolean;
+      order_bump_scarcity_timer_minutes?: number;
       header_store_name_visible?: boolean;
       header_secure_badge?: boolean;
       header_logo_alignment?: string;
