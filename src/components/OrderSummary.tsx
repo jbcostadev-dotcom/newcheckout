@@ -17,6 +17,7 @@ interface OrderSummaryProps {
   onQtyChange?: (productId: number, delta: number) => void;
   discount?: number;
   title?: string;
+  totalTextColor?: string;
   defaultExpanded?: boolean;
   showDiscount?: boolean;
   couponEnabled?: boolean;
@@ -35,6 +36,7 @@ export default function OrderSummary({
   onQtyChange,
   discount = 0,
   title = "Resumo do pedido",
+  totalTextColor = "#00A37C",
   defaultExpanded = true,
   showDiscount = true,
   couponEnabled = true,
@@ -242,6 +244,7 @@ export default function OrderSummary({
           justifyContent: "space-between",
           fontSize: "1rem",
           fontWeight: 700,
+          color: totalTextColor,
           paddingTop: 8,
           marginBottom: 20,
         }}

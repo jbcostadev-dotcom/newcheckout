@@ -1657,6 +1657,7 @@ function CheckoutPageContent() {
                 total={subtotalWithBump + shippingPrice}
                 discount={couponDiscount + (step === "pagamento" ? discountValue : 0)}
                 title={settings.summary_title || "Resumo do pedido"}
+                totalTextColor={settings.summary_total_text_color ?? "#00A37C"}
                 defaultExpanded={settings.summary_default_expanded ?? true}
                 showDiscount={settings.summary_show_discount ?? true}
                 couponEnabled={settings.summary_coupon_enabled ?? true}
