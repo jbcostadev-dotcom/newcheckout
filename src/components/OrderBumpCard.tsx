@@ -1,39 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import type { OrderBumpOffer } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 
 interface OrderBumpCardProps {
   bump: OrderBumpOffer;
   selected: boolean;
+  timer?: { secondsLeft: number; expired: boolean };
   onToggle: (selected: boolean) => void;
 }
 
-export default function OrderBumpCard({ bump, selected, onToggle }: OrderBumpCardProps) {
+export default function OrderBumpCard({ bump, selected, timer, onToggle }: OrderBumpCardProps) {
   const { product } = bump;
 
   const timerEnabled = Boolean(bump.scarcity_timer_enabled);
-  const timerDurationSeconds = Math.max(1, Number(bump.scarcity_timer_minutes) || 10) * 60;
-  const [timeLeft, setTimeLeft] = useState(timerDurationSeconds);
-
-  useEffect(() => {
-    if (!timerEnabled) return;
-
-    setTimeLeft(timerDurationSeconds);
-    const intervalId = window.setInterval(() => {
-      setTimeLeft((current) => Math.max(0, current - 1));
-    }, 1000);
-
-    return () => window.clearInterval(intervalId);
-  }, [bump.id, timerEnabled, timerDurationSeconds]);
-
-  const handleClick = () => onToggle(!selected);
+  const isExpired = Boolean(timer?.expired);
+  const isSelected = selected && !isExpired;
+  const handleClick = () => {
+    if (!isExpired) onToggle(!isSelected);
+  };
 
   return (
     <div
       role="button"
-      tabIndex={0}
+      tabIndex={isExpired ? -1 : 0}
+      aria-disabled={isExpired}
       onClick={handleClick}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -43,12 +34,12 @@ export default function OrderBumpCard({ bump, selected, onToggle }: OrderBumpCar
       }}
       style={{
         background: bump.bg_color,
-        border: `1.5px solid ${selected ? bump.button_color : bump.border_color}`,
+        border: `1.5px solid ${isSelected ? bump.button_color : bump.border_color}`,
         borderRadius: 12,
         padding: 14,
-        cursor: "pointer",
+        cursor: isExpired ? "not-allowed" : "pointer",
         position: "relative",
-        opacity: selected ? 1 : 0.95,
+        opacity: isExpired ? 0.65 : isSelected ? 1 : 0.95,
         transition: "border-color 0.15s ease, transform 0.05s ease",
         overflow: "hidden",
       }}
@@ -63,7 +54,7 @@ export default function OrderBumpCard({ bump, selected, onToggle }: OrderBumpCar
             gap: 8,
             margin: "-14px -14px 14px",
             padding: "8px 10px",
-            background: bump.button_color,
+            background: isExpired ? "#64748b" : bump.button_color,
             color: bump.button_text_color,
             fontSize: "0.62rem",
             fontWeight: 800,
@@ -76,7 +67,7 @@ export default function OrderBumpCard({ bump, selected, onToggle }: OrderBumpCar
               <path d="m13 2-9 12h7l-1 8 9-12h-7l1-8Z" />
             </svg>
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              Oferta especial para você
+              {isExpired ? "Oferta encerrada" : "Oferta especial para você"}
             </span>
           </span>
           <span
@@ -91,7 +82,7 @@ export default function OrderBumpCard({ bump, selected, onToggle }: OrderBumpCar
               textTransform: "none",
             }}
           >
-            {formatCountdown(timeLeft)}
+            {isExpired ? "ENCERRADA" : formatCountdown(timer?.secondsLeft ?? 0)}
           </span>
         </div>
       )}
@@ -104,15 +95,15 @@ export default function OrderBumpCard({ bump, selected, onToggle }: OrderBumpCar
           width: 22,
           height: 22,
           borderRadius: "50%",
-          border: `2px solid ${selected ? bump.button_color : bump.border_color}`,
-          background: selected ? bump.button_color : "transparent",
+          border: `2px solid ${isSelected ? bump.button_color : bump.border_color}`,
+          background: isSelected ? bump.button_color : "transparent",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           flexShrink: 0,
         }}
       >
-        {selected && (
+        {isSelected && (
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={bump.button_text_color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <path d="M5 13l4 4L19 7" />
           </svg>
@@ -216,20 +207,21 @@ export default function OrderBumpCard({ bump, selected, onToggle }: OrderBumpCar
               e.stopPropagation();
               handleClick();
             }}
+            disabled={isExpired}
             style={{
               marginTop: 10,
               width: "100%",
               padding: "8px 12px",
               borderRadius: 8,
               border: "none",
-              cursor: "pointer",
+              cursor: isExpired ? "not-allowed" : "pointer",
               fontSize: "0.8rem",
               fontWeight: 700,
-              background: bump.button_color,
+              background: isExpired ? "#64748b" : bump.button_color,
               color: bump.button_text_color,
             }}
           >
-            {selected ? "✓ " + (bump.button_label || "Quero essa oferta") : (bump.button_label || "Quero essa oferta")}
+            {isExpired ? "Oferta encerrada" : isSelected ? "✓ " + (bump.button_label || "Quero essa oferta") : (bump.button_label || "Quero essa oferta")}
           </button>
         </div>
       </div>

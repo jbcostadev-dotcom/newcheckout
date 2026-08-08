@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   cvvLengthForBrand,
   getCardBrand,
@@ -16,14 +16,14 @@ import type { CardData, InstallmentConfig, OrderBumpOffer } from "@/types";
 import OrderBumpCard from "@/components/OrderBumpCard";
 
 const carouselArrowStyle: React.CSSProperties = {
-  width: 34,
-  height: 34,
+  width: 28,
+  height: 28,
   borderRadius: "50%",
   border: "1px solid var(--input-border, #d1d5db)",
   background: "var(--card-bg, #ffffff)",
   color: "var(--text-primary)",
   cursor: "pointer",
-  fontSize: "1.6rem",
+  fontSize: "1.35rem",
   lineHeight: 1,
   display: "flex",
   alignItems: "center",
@@ -87,6 +87,48 @@ export default function StepPagamento({
   const [carouselIndexByMethod, setCarouselIndexByMethod] = useState<
     Record<"pix" | "credit_card" | "boleto", number>
   >({ pix: 0, credit_card: 0, boleto: 0 });
+  const [bumpExpiryById, setBumpExpiryById] = useState<Record<number, number>>({});
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
+
+  useEffect(() => {
+    setBumpExpiryById((previous) => {
+      let changed = false;
+      const next = { ...previous };
+
+      orderBumps.forEach((bump) => {
+        if (!bump.scarcity_timer_enabled || next[bump.id]) return;
+        const minutes = Math.max(1, Number(bump.scarcity_timer_minutes) || 10);
+        next[bump.id] = Date.now() + minutes * 60 * 1000;
+        changed = true;
+      });
+
+      return changed ? next : previous;
+    });
+  }, [orderBumps]);
+
+  const hasScarcityTimer = orderBumps.some((bump) => bump.scarcity_timer_enabled);
+
+  useEffect(() => {
+    if (!hasScarcityTimer) return;
+    const intervalId = window.setInterval(() => setCurrentTime(Date.now()), 1000);
+    return () => window.clearInterval(intervalId);
+  }, [hasScarcityTimer]);
+
+  const getBumpTimer = (bump: OrderBumpOffer) => {
+    if (!bump.scarcity_timer_enabled) return undefined;
+    const durationMs = Math.max(1, Number(bump.scarcity_timer_minutes) || 10) * 60 * 1000;
+    const expiryAt = bumpExpiryById[bump.id] ?? currentTime + durationMs;
+    const secondsLeft = Math.max(0, Math.ceil((expiryAt - currentTime) / 1000));
+    return { secondsLeft, expired: secondsLeft === 0 };
+  };
+
+  useEffect(() => {
+    if (selectedOrderBumpId === undefined || selectedOrderBumpId === null) return;
+    const selectedBump = orderBumps.find((bump) => bump.id === selectedOrderBumpId);
+    if (selectedBump && getBumpTimer(selectedBump)?.expired) {
+      onToggleOrderBump?.(selectedOrderBumpId, false);
+    }
+  }, [currentTime, bumpExpiryById, orderBumps, selectedOrderBumpId, onToggleOrderBump]);
 
   const cardNumberDigits = card.number.replace(/\D+/g, "");
   const cardBrand = getCardBrand(cardNumberDigits);
@@ -183,6 +225,7 @@ export default function StepPagamento({
               key={bump.id}
               bump={bump}
               selected={selectedOrderBumpId === bump.id}
+              timer={getBumpTimer(bump)}
               onToggle={(sel) => onToggleOrderBump?.(bump.id, sel)}
             />
           ))}
@@ -201,7 +244,17 @@ export default function StepPagamento({
 
     return (
       <div style={{ margin: "16px 0" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "34px minmax(0, 1fr) 34px", alignItems: "center", gap: 8 }}>
+        <OrderBumpCard
+          key={currentBump.id}
+          bump={currentBump}
+          selected={selectedOrderBumpId === currentBump.id}
+          timer={getBumpTimer(currentBump)}
+          onToggle={(selected) => {
+            onToggleOrderBump?.(currentBump.id, selected);
+            if (selected) goTo(1);
+          }}
+        />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 8 }}>
           <button
             type="button"
             aria-label="Oferta anterior"
@@ -210,15 +263,9 @@ export default function StepPagamento({
           >
             &#8249;
           </button>
-          <OrderBumpCard
-            key={currentBump.id}
-            bump={currentBump}
-            selected={selectedOrderBumpId === currentBump.id}
-            onToggle={(selected) => {
-              onToggleOrderBump?.(currentBump.id, selected);
-              if (selected) goTo(1);
-            }}
-          />
+          <span style={{ color: "var(--text-secondary)", fontSize: "0.72rem", minWidth: 72, textAlign: "center" }}>
+            Oferta {currentIndex + 1} de {visible.length}
+          </span>
           <button
             type="button"
             aria-label="Próxima oferta"
@@ -228,9 +275,6 @@ export default function StepPagamento({
             &#8250;
           </button>
         </div>
-        <p style={{ marginTop: 8, textAlign: "center", color: "var(--text-secondary)", fontSize: "0.72rem" }}>
-          Oferta {currentIndex + 1} de {visible.length}
-        </p>
       </div>
     );
   };
