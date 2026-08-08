@@ -21,9 +21,16 @@ export function maskCnpj(value: string): string {
 
 export function maskCelular(value: string): string {
   const d = onlyDigits(value).slice(0, 11);
-  return d
-    .replace(/(\d{2})(\d)/, "($1) $2")
-    .replace(/(\d{5})(\d{1,4})$/, "$1-$2");
+  if (d.length <= 2) return d;
+
+  const ddd = d.slice(0, 2);
+  const number = d.slice(2);
+  const firstGroupLength = d.length === 11 ? 5 : 4;
+
+  return `(${ddd}) ${number.replace(
+    new RegExp(`(\\d{${firstGroupLength}})(\\d)`),
+    "$1-$2",
+  )}`;
 }
 
 export function maskCep(value: string): string {
