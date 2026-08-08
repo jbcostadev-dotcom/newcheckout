@@ -91,6 +91,8 @@ export default function StepPagamento({
   const [currentTime, setCurrentTime] = useState(() => Date.now());
 
   useEffect(() => {
+    if (!isActive) return;
+
     setBumpExpiryById((previous) => {
       let changed = false;
       const next = { ...previous };
@@ -104,15 +106,15 @@ export default function StepPagamento({
 
       return changed ? next : previous;
     });
-  }, [orderBumps]);
+  }, [isActive, orderBumps]);
 
   const hasScarcityTimer = orderBumps.some((bump) => bump.scarcity_timer_enabled);
 
   useEffect(() => {
-    if (!hasScarcityTimer) return;
+    if (!hasScarcityTimer || Object.keys(bumpExpiryById).length === 0) return;
     const intervalId = window.setInterval(() => setCurrentTime(Date.now()), 1000);
     return () => window.clearInterval(intervalId);
-  }, [hasScarcityTimer]);
+  }, [bumpExpiryById, hasScarcityTimer]);
 
   const getBumpTimer = (bump: OrderBumpOffer) => {
     if (!bump.scarcity_timer_enabled) return undefined;
