@@ -438,6 +438,10 @@ function CheckoutPageContent() {
     root.style.setProperty("--step-number-color", s.step_number_color || "#000000");
     root.style.setProperty("--step-button-color", s.step_button_color || "#1b7a2b");
     root.style.setProperty("--finalize-button-color", s.finalize_button_color || "#1a3a5c");
+    root.style.setProperty("--order-bump-bg-color", s.order_bump_bg_color || "#FEFCE8");
+    root.style.setProperty("--order-bump-border-color", s.order_bump_border_color || "#E2E8F0");
+    root.style.setProperty("--order-bump-button-color", s.order_bump_button_color || "#13BF8C");
+    root.style.setProperty("--order-bump-button-text-color", s.order_bump_button_text_color || "#FFFFFF");
     root.style.setProperty(
       "--input-border-radius",
       s.input_border_radius === "none" ? "0" : s.input_border_radius === "large" ? "16px" : "8px"
@@ -1424,7 +1428,7 @@ function CheckoutPageContent() {
 
   /** On mobile, hide steps that are not active AND not completed */
   const mobileHidden = (id: StepId) =>
-    step !== id && !completed.includes(id) ? "step-card-mobile-hidden" : "";
+    !isPreview && step !== id && !completed.includes(id) ? "step-card-mobile-hidden" : "";
 
   const LogoContent = (
     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -1703,7 +1707,7 @@ function CheckoutPageContent() {
               pixQrCode={null}
               pixCopiaCola={null}
               buttonText={settings.button_text || "Finalizar Compra"}
-              isActive={step === "pagamento"}
+              isActive={isPreview || step === "pagamento"}
               total={displayTotal}
               pixDiscount={pixDiscount}
               boletoDiscount={boletoDiscount}

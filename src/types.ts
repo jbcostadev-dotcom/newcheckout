@@ -147,6 +147,10 @@ export interface CheckoutData {
       order_bump_display_mode?: "stacked" | "carousel";
       order_bump_scarcity_timer_enabled?: boolean;
       order_bump_scarcity_timer_minutes?: number;
+      order_bump_bg_color?: string;
+      order_bump_border_color?: string;
+      order_bump_button_color?: string;
+      order_bump_button_text_color?: string;
       header_store_name_visible?: boolean;
       header_secure_badge?: boolean;
       header_logo_alignment?: string;

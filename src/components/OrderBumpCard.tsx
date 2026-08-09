@@ -33,8 +33,8 @@ export default function OrderBumpCard({ bump, selected, timer, onToggle }: Order
         }
       }}
       style={{
-        background: bump.bg_color,
-        border: `1.5px solid ${isSelected ? bump.button_color : bump.border_color}`,
+        background: "var(--order-bump-bg-color)",
+        border: `1.5px solid ${isSelected ? "var(--order-bump-button-color)" : "var(--order-bump-border-color)"}`,
         borderRadius: 12,
         padding: 14,
         cursor: isExpired ? "not-allowed" : "pointer",
@@ -54,8 +54,8 @@ export default function OrderBumpCard({ bump, selected, timer, onToggle }: Order
             gap: 8,
             margin: "-14px -14px 14px",
             padding: "8px 10px",
-            background: isExpired ? "#64748b" : bump.button_color,
-            color: bump.button_text_color,
+            background: isExpired ? "#64748b" : "var(--order-bump-button-color)",
+            color: "var(--order-bump-button-text-color)",
             fontSize: "0.62rem",
             fontWeight: 800,
             letterSpacing: "0.06em",
@@ -95,8 +95,8 @@ export default function OrderBumpCard({ bump, selected, timer, onToggle }: Order
           width: 22,
           height: 22,
           borderRadius: "50%",
-          border: `2px solid ${isSelected ? bump.button_color : bump.border_color}`,
-          background: isSelected ? bump.button_color : "transparent",
+          border: `2px solid ${isSelected ? "var(--order-bump-button-color)" : "var(--order-bump-border-color)"}`,
+          background: isSelected ? "var(--order-bump-button-color)" : "transparent",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -104,7 +104,7 @@ export default function OrderBumpCard({ bump, selected, timer, onToggle }: Order
         }}
       >
         {isSelected && (
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={bump.button_text_color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--order-bump-button-text-color)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <path d="M5 13l4 4L19 7" />
           </svg>
         )}
@@ -217,8 +217,8 @@ export default function OrderBumpCard({ bump, selected, timer, onToggle }: Order
               cursor: isExpired ? "not-allowed" : "pointer",
               fontSize: "0.8rem",
               fontWeight: 700,
-              background: isExpired ? "#64748b" : bump.button_color,
-              color: bump.button_text_color,
+              background: isExpired ? "#64748b" : "var(--order-bump-button-color)",
+              color: "var(--order-bump-button-text-color)",
             }}
           >
             {isExpired ? "Oferta encerrada" : isSelected ? "✓ " + (bump.button_label || "Quero essa oferta") : (bump.button_label || "Quero essa oferta")}
