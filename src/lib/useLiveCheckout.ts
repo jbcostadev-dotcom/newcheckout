@@ -26,7 +26,7 @@ export interface LiveCheckoutData {
 
 const SESSION_KEY = "live_checkout_session_id";
 
-function getOrCreateSessionId(): string {
+export function getCheckoutSessionId(): string {
   if (typeof window === "undefined") {
     return "";
   }
@@ -68,7 +68,7 @@ export function useLiveCheckout(
   useEffect(() => {
     if (!enabled || !API_URL || typeof window === "undefined") return;
 
-    sessionIdRef.current = getOrCreateSessionId();
+    sessionIdRef.current = getCheckoutSessionId();
     const sessionId = sessionIdRef.current;
     let interval: NodeJS.Timeout | null = null;
 

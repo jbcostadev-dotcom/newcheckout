@@ -30,7 +30,7 @@ import OrderSummary, { GroupedItem } from "@/components/OrderSummary";
 import SocialProofs from "@/components/SocialProofs";
 import Footer from "@/components/Footer";
 import ScarcityBar from "@/components/ScarcityBar";
-import { useLiveCheckout } from "@/lib/useLiveCheckout";
+import { getCheckoutSessionId, useLiveCheckout } from "@/lib/useLiveCheckout";
 import {
   loadGoogleAds,
   trackBeginCheckout,
@@ -847,6 +847,7 @@ function CheckoutPageContent() {
       if (!email || name.length < 3 || groupedItems.length === 0) return;
 
       const payload: Record<string, unknown> = {
+        session_id: getCheckoutSessionId(),
         step_reached: step,
         customer_name: name,
         customer_email: email,
