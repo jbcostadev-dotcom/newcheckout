@@ -379,8 +379,16 @@ function CheckoutPageContent() {
     if (!isPreview) return;
     const handler = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
-      if (event.data.type !== "checkout:settings") return;
-      setLiveSettings(event.data.settings ?? {});
+      if (event.data.type === "checkout:settings") {
+        setLiveSettings(event.data.settings ?? {});
+        return;
+      }
+      if (
+        event.data.type === "checkout:preview-step" &&
+        event.data.step === "pagamento"
+      ) {
+        setStep("pagamento");
+      }
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
@@ -1708,7 +1716,7 @@ function CheckoutPageContent() {
               pixQrCode={null}
               pixCopiaCola={null}
               buttonText={settings.button_text || "Finalizar Compra"}
-              isActive={isPreview || step === "pagamento"}
+              isActive={step === "pagamento"}
               total={displayTotal}
               pixDiscount={pixDiscount}
               boletoDiscount={boletoDiscount}
