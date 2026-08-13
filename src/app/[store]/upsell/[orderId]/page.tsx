@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useParams, useRouter } from "next/navigation";
 import QRCode from "qrcode";
 import { apiGet, apiPost } from "@/lib/api";
@@ -222,6 +222,11 @@ function UpsellContent() {
     announcement_bar_enabled?: boolean;
     announcement_bar_bg?: string;
     announcement_bar_text_color?: string;
+    upsell_bg_color?: string;
+    upsell_border_color?: string;
+    upsell_text_color?: string;
+    upsell_button_color?: string;
+    upsell_button_text_color?: string;
   }>({});
 
   useEffect(() => {
@@ -628,11 +633,18 @@ function UpsellContent() {
 
         {/* Upsell Card */}
         <div style={{
-          background: "var(--card-bg)",
-          border: "1px solid var(--border-color)",
+          background: settings.upsell_bg_color || offer.bg_color || "var(--card-bg)",
+          border: `1px solid ${settings.upsell_border_color || offer.border_color || "var(--border-color)"}`,
           borderRadius: 16,
           padding: "28px 24px",
-        }}>
+          ...(settings.upsell_text_color
+            ? {
+                "--text-primary": settings.upsell_text_color,
+                "--text-secondary": `color-mix(in srgb, ${settings.upsell_text_color} 72%, transparent)`,
+                "--text-muted": `color-mix(in srgb, ${settings.upsell_text_color} 52%, transparent)`,
+              }
+            : {}),
+        } as CSSProperties}>
           <h2 style={{
             fontSize: "1.5rem",
             fontWeight: 700,
@@ -817,8 +829,8 @@ function UpsellContent() {
                   padding: "16px 24px",
                   borderRadius: 8,
                   border: "none",
-                  background: offer.button_color,
-                  color: offer.button_text_color,
+                  background: settings.upsell_button_color || offer.button_color,
+                  color: settings.upsell_button_text_color || offer.button_text_color,
                   fontWeight: 700,
                   fontSize: "1rem",
                   cursor: charging ? "not-allowed" : "pointer",
