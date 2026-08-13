@@ -43,10 +43,54 @@ function formatPhone(phone: string): string {
   return phone;
 }
 
+const PREVIEW_CONFIRMED_ORDER: ConfirmedOrderResponse = {
+  order_id: 12345,
+  status: "paid",
+  payment_method: "credit_card",
+  payment_label: "Cartão de crédito",
+  installments: 1,
+  installment_label: "1x sem juros",
+  card_brand: "visa",
+  card_last4: "4242",
+  customer_name: "Cliente de Exemplo",
+  customer_email: "cliente@exemplo.com",
+  customer_document: "12345678901",
+  customer_phone: "11999999999",
+  shipping_address: {
+    logradouro: "Rua Exemplo",
+    numero: "123",
+    complemento: null,
+    bairro: "Centro",
+    cidade: "São Paulo",
+    uf: "SP",
+    cep: "01001000",
+  },
+  shipping_method: "Entrega padrão",
+  shipping_price: 0,
+  shipping_label: "Grátis",
+  items: [
+    {
+      id: 1,
+      product_id: 1,
+      name: "Produto Exemplo",
+      attributes: null,
+      unit_price: 99.9,
+      qty: 1,
+      total: 99.9,
+      image_url: null,
+    },
+  ],
+  subtotal: 99.9,
+  total: 99.9,
+  store_name: "Nome da Loja",
+};
+
 function ConfirmedContent() {
   const params = useParams();
   const storeSlug = params.store as string;
-  const orderId = parseInt(params.orderId as string, 10);
+  const orderIdParam = params.orderId as string;
+  const isPreview = orderIdParam === "preview";
+  const orderId = isPreview ? PREVIEW_CONFIRMED_ORDER.order_id : parseInt(orderIdParam, 10);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -82,6 +126,18 @@ function ConfirmedContent() {
   }, []);
 
   useEffect(() => {
+    if (!isPreview) return;
+    const handler = (event: MessageEvent) => {
+      if (!event.data || typeof event.data !== "object") return;
+      if (event.data.type === "checkout:settings") {
+        setSettings(event.data.settings ?? {});
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [isPreview]);
+
+  useEffect(() => {
     const root = document.documentElement;
     if (settings.primary_color) {
       root.style.setProperty("--green-primary", settings.primary_color);
@@ -109,6 +165,12 @@ function ConfirmedContent() {
   }, [settings]);
 
   useEffect(() => {
+    if (isPreview) {
+      setOrder(PREVIEW_CONFIRMED_ORDER);
+      setLoading(false);
+      return;
+    }
+
     if (!orderId || isNaN(orderId)) {
       setError("Pedido inválido.");
       setLoading(false);
@@ -254,7 +316,7 @@ function ConfirmedContent() {
     };
 
     fetchOrder();
-  }, [orderId]);
+  }, [orderId, isPreview]);
 
   if (loading) {
     return (
@@ -335,11 +397,15 @@ function ConfirmedContent() {
       background: "var(--checkout-bg)",
       fontSize: settings.font_size_base || "16px",
     }}>
-      <GoogleAdsTracking config={readGoogleAdsConfig()} />
-      <MetaPixelTracking config={readMetaPixelConfig()} />
-      <TikTokPixelTracking config={readTikTokPixelConfig()} />
-      <KwaiPixelTracking config={readKwaiPixelConfig()} />
-      <TaboolaPixelTracking config={readTaboolaPixelConfig()} />
+      {!isPreview && (
+        <>
+          <GoogleAdsTracking config={readGoogleAdsConfig()} />
+          <MetaPixelTracking config={readMetaPixelConfig()} />
+          <TikTokPixelTracking config={readTikTokPixelConfig()} />
+          <KwaiPixelTracking config={readKwaiPixelConfig()} />
+          <TaboolaPixelTracking config={readTaboolaPixelConfig()} />
+        </>
+      )}
       {/* Header */}
       <header style={{
         display: "flex",

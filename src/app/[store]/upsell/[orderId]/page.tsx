@@ -20,6 +20,30 @@ interface RedirectSettings {
   pix_redirect_url?: string | null;
 }
 
+const PREVIEW_UPSELL_OFFER: UpsellOffer = {
+  id: 0,
+  name: "Upsell de exemplo",
+  product_id: 0,
+  product: {
+    id: 0,
+    name: "Produto exclusivo de exemplo",
+    image_url: null,
+    original_price: 149.9,
+    upsell_price: 79.9,
+    attributes: null,
+    variants: null,
+  },
+  discount_type: "fixed",
+  discount_value: 70,
+  offer_title: null,
+  offer_message: null,
+  button_label: "SIM, QUERO APROVEITAR",
+  bg_color: "#ffffff",
+  border_color: "#e2e8f0",
+  button_color: "#22c55e",
+  button_text_color: "#ffffff",
+};
+
 function getRedirectSettings(): RedirectSettings {
   try {
     const raw = sessionStorage.getItem("pix_page_settings");
@@ -133,7 +157,9 @@ function UpsellContent() {
     () => (isStoreId ? `/store/${storeSlug}` : `/${storeSlug}`),
     [isStoreId, storeSlug]
   );
-  const orderId = parseInt(params.orderId as string, 10);
+  const orderIdParam = params.orderId as string;
+  const isPreview = orderIdParam === "preview";
+  const orderId = isPreview ? 12345 : parseInt(orderIdParam, 10);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -210,6 +236,18 @@ function UpsellContent() {
   }, []);
 
   useEffect(() => {
+    if (!isPreview) return;
+    const handler = (event: MessageEvent) => {
+      if (!event.data || typeof event.data !== "object") return;
+      if (event.data.type === "checkout:settings") {
+        setSettings(event.data.settings ?? {});
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [isPreview]);
+
+  useEffect(() => {
     const root = document.documentElement;
     if (settings.primary_color) {
       root.style.setProperty("--green-primary", settings.primary_color);
@@ -237,6 +275,17 @@ function UpsellContent() {
   }, [settings]);
 
   useEffect(() => {
+    if (isPreview) {
+      setOffer(PREVIEW_UPSELL_OFFER);
+      setOrderInfo({
+        payment_method: "credit_card",
+        card_brand: "visa",
+        card_last4: "4242",
+      });
+      setLoading(false);
+      return;
+    }
+
     if (!orderId || isNaN(orderId)) {
       setError("Pedido inválido.");
       setLoading(false);
@@ -281,7 +330,7 @@ function UpsellContent() {
     };
 
     fetchOffer();
-  }, [orderId, isStoreId, storeSlug, getStoreIdentifier, router]);
+  }, [orderId, isPreview, isStoreId, storeSlug, getStoreIdentifier, router]);
 
   // Gera QR code quando retorna novo PIX
   useEffect(() => {
@@ -329,6 +378,7 @@ function UpsellContent() {
   }, [pixResult, pixPolling, orderId, router, storeSlug]);
 
   const handleAccept = useCallback(async () => {
+    if (isPreview) return;
     if (!offer) return;
     setCharging(true);
     try {
@@ -370,9 +420,10 @@ function UpsellContent() {
     } finally {
       setCharging(false);
     }
-  }, [offer, orderId, isStoreId, storeSlug, storePathPrefix, getStoreIdentifier, router, installments, selectedVariant]);
+  }, [isPreview, offer, orderId, isStoreId, storeSlug, storePathPrefix, getStoreIdentifier, router, installments, selectedVariant]);
 
   const handleDecline = useCallback(async () => {
+    if (isPreview) return;
     setDeclining(true);
     try {
       const payload: Record<string, unknown> = { order_id: orderId };
@@ -392,7 +443,7 @@ function UpsellContent() {
       setError(err instanceof Error ? err.message : "Erro ao recusar oferta.");
       setDeclining(false);
     }
-  }, [orderId, isStoreId, storeSlug, storePathPrefix, getStoreIdentifier, router]);
+  }, [isPreview, orderId, isStoreId, storeSlug, storePathPrefix, getStoreIdentifier, router]);
 
   if (loading) {
     return (

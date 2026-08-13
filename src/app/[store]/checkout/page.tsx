@@ -385,9 +385,17 @@ function CheckoutPageContent() {
       }
       if (
         event.data.type === "checkout:preview-step" &&
-        event.data.step === "pagamento"
+        ["dados", "entrega", "pagamento"].includes(event.data.step)
       ) {
-        setStep("pagamento");
+        const previewStep = event.data.step as StepId;
+        setStep(previewStep);
+        setCompleted(
+          previewStep === "pagamento"
+            ? ["dados", "entrega"]
+            : previewStep === "entrega"
+              ? ["dados"]
+              : []
+        );
       }
     };
     window.addEventListener("message", handler);
