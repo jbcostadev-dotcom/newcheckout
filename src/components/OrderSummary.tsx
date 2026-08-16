@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { formatCurrency } from "@/lib/utils";
-import type { CheckoutProduct, ValidatedCoupon } from "@/types";
+import { calculateInstallmentValue } from "@/lib/installments";
+import type { CheckoutProduct, InstallmentConfig, ValidatedCoupon } from "@/types";
 
 export interface GroupedItem {
   product: CheckoutProduct;
@@ -21,6 +22,8 @@ interface OrderSummaryProps {
   totalTextColor?: string;
   defaultExpanded?: boolean;
   showDiscount?: boolean;
+  showInstallments?: boolean;
+  installmentConfig?: InstallmentConfig;
   couponEnabled?: boolean;
   onApplyCoupon?: (code: string) => Promise<void>;
   onRemoveCoupon?: () => void;
@@ -41,6 +44,8 @@ export default function OrderSummary({
   totalTextColor = "#00A37C",
   defaultExpanded = true,
   showDiscount = true,
+  showInstallments = true,
+  installmentConfig,
   couponEnabled = true,
   onApplyCoupon,
   onRemoveCoupon,
@@ -50,6 +55,14 @@ export default function OrderSummary({
 }: OrderSummaryProps) {
   const finalTotal = total - discount;
   const productTotal = subtotal !== undefined ? subtotal : total - shipping;
+  const installmentLimit = Math.max(1, Math.min(12, installmentConfig?.limit ?? 1));
+  const installmentValue = installmentConfig
+    ? calculateInstallmentValue(finalTotal, installmentLimit, installmentConfig)
+    : null;
+  const installmentLabel =
+    showInstallments && installmentValue !== null && finalTotal > 0 && installmentLimit > 1
+      ? `ou ${installmentLimit}x de ${formatCurrency(installmentValue)}`
+      : null;
 
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [isMobile, setIsMobile] = useState(false);
@@ -91,12 +104,19 @@ export default function OrderSummary({
             marginBottom: showContent ? 16 : 0,
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
             <span style={{ fontSize: "1.1rem", fontWeight: 700 }}>{title}</span>
             <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>Informações da sua compra</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto", flexShrink: 0 }}>
-            <span style={{ fontSize: "1.1rem", fontWeight: 700 }}>{formatCurrency(finalTotal)}</span>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+              <span style={{ fontSize: "1.1rem", fontWeight: 700 }}>{formatCurrency(finalTotal)}</span>
+              {!showContent && installmentLabel && (
+                <span style={{ marginTop: 2, fontSize: "0.75rem", fontWeight: 500, color: totalTextColor }}>
+                  {installmentLabel}
+                </span>
+              )}
+            </div>
             <svg
               width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
               style={{
@@ -252,7 +272,14 @@ export default function OrderSummary({
         }}
       >
         <span>Total</span>
-        <span>{formatCurrency(finalTotal)}</span>
+        <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+          <span>{formatCurrency(finalTotal)}</span>
+          {installmentLabel && (
+            <span style={{ marginTop: 2, fontSize: "0.75rem", fontWeight: 500 }}>
+              {installmentLabel}
+            </span>
+          )}
+        </span>
       </div>
 
       {/* Product items */}

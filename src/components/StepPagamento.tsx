@@ -12,6 +12,7 @@ import {
   maskCvv,
 } from "@/lib/masks";
 import { formatCurrency } from "@/lib/utils";
+import { calculateInstallmentValue, getInstallmentRate } from "@/lib/installments";
 import type { CardData, InstallmentConfig, OrderBumpOffer } from "@/types";
 import OrderBumpCard from "@/components/OrderBumpCard";
 
@@ -173,20 +174,11 @@ export default function StepPagamento({
   const installmentOptions = useMemo(() => {
     const config = installmentConfig;
     const limit = config?.limit ?? 12;
-    const interestFree = config?.interest_free ?? 1;
     const options: { value: number; label: string }[] = [];
 
     for (let i = 1; i <= limit; i++) {
-      let rate = 0;
-      if (config && i > interestFree) {
-        if (config.type === "custom") {
-          rate = config.rates?.[i - 1] ?? 0;
-        } else {
-          rate = config.default_rate ?? 0;
-        }
-      }
-      const totalWithInterest = discountedTotal * Math.pow(1 + rate / 100, i);
-      const installmentValue = totalWithInterest / i;
+      const rate = getInstallmentRate(config, i);
+      const installmentValue = calculateInstallmentValue(discountedTotal, i, config);
       const rateLabel = rate > 0 ? ` (${rate.toString().replace(".", ",")}% a.m.)` : " (sem juros)";
       options.push({
         value: i,
