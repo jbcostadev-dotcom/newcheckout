@@ -111,3 +111,23 @@ export function cpfIsValid(value: string): boolean {
   if (rev >= 10) rev = 0;
   return rev === parseInt(d[10], 10);
 }
+
+export function cnpjIsValid(value: string): boolean {
+  const d = onlyDigits(value);
+  if (d.length !== 14 || /^(\d)\1{13}$/.test(d)) return false;
+
+  const calculateDigit = (base: string, weights: number[]): number => {
+    const sum = weights.reduce(
+      (total, weight, index) => total + parseInt(base[index], 10) * weight,
+      0,
+    );
+    const remainder = sum % 11;
+    return remainder < 2 ? 0 : 11 - remainder;
+  };
+
+  const firstDigit = calculateDigit(d.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  if (firstDigit !== parseInt(d[12], 10)) return false;
+
+  const secondDigit = calculateDigit(d.slice(0, 13), [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return secondDigit === parseInt(d[13], 10);
+}

@@ -125,6 +125,93 @@ body {
   padding-left: 52px;
 }
 
+.customer-type-selector {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 5px;
+  border: 1.5px solid var(--input-border);
+  border-radius: var(--input-border-radius);
+  background: var(--input-bg);
+}
+
+.customer-type-option {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 8px;
+  border: 0;
+  border-radius: calc(var(--input-border-radius) - 3px);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.customer-type-option.active {
+  background: #f1f1f3;
+  color: var(--text-primary);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.customer-type-option:focus-visible {
+  outline: 2px solid var(--input-border-focus);
+  outline-offset: 1px;
+}
+
+.customer-type-option:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.customer-type-abbreviation {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 20px;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.state-registration-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.state-registration-row .checkout-input:disabled {
+  background: #f4f4f5;
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.state-registration-exempt {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.state-registration-exempt input {
+  width: 19px;
+  height: 19px;
+  accent-color: var(--input-border-focus);
+}
+
 /* ─── Step Card Styles ─── */
 .step-card {
   background: var(--step-card-bg);
@@ -507,5 +594,16 @@ body {
   /* Hide inactive (not-yet-reached) step cards on mobile */
   .step-card-mobile-hidden {
     display: none !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .customer-type-option {
+    gap: 5px;
+    font-size: 0.78rem;
+  }
+
+  .customer-type-abbreviation {
+    display: none;
   }
 }

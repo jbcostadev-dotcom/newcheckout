@@ -195,6 +195,8 @@ export interface CheckoutData {
       font_family?: string;
       font_size_base?: string;
       social_proofs_enabled?: boolean;
+      accept_cpf?: boolean;
+      accept_cnpj?: boolean;
       default_payment_method?: "credit_card" | "pix" | "boleto";
       card_pre_selected_installment?: number;
       card_installment_limit?: number;

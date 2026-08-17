@@ -6,6 +6,7 @@ import { apiGet, apiPost, ApiError } from "@/lib/api";
 import type { ValidatedCoupon } from "@/types";
 import ErrorModal from "@/components/ErrorModal";
 import {
+  cnpjIsValid,
   cpfIsValid,
   cvvLengthForBrand,
   getCardBrand,
@@ -23,7 +24,7 @@ import type {
   InstallmentConfig,
   OrderBumpOffer,
 } from "@/types";
-import StepDados from "@/components/StepDados";
+import StepDados, { type CustomerType } from "@/components/StepDados";
 import StepEntrega from "@/components/StepEntrega";
 import StepPagamento from "@/components/StepPagamento";
 import OrderSummary, { GroupedItem } from "@/components/OrderSummary";
@@ -266,6 +267,9 @@ function CheckoutPageContent() {
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerDocument, setCustomerDocument] = useState("");
+  const [customerType, setCustomerType] = useState<CustomerType>("individual");
+  const [customerStateRegistration, setCustomerStateRegistration] = useState("");
+  const [customerStateRegistrationExempt, setCustomerStateRegistrationExempt] = useState(false);
 
   const [address, setAddress] = useState<ShippingAddress>({
     cep: "",
@@ -406,6 +410,27 @@ function CheckoutPageContent() {
     () => ({ ...data?.store.settings, ...liveSettings }),
     [data?.store.settings, liveSettings]
   );
+
+  const configuredAcceptCpf = effectiveSettings.accept_cpf ?? true;
+  const configuredAcceptCnpj = effectiveSettings.accept_cnpj ?? false;
+  const acceptCpf = configuredAcceptCpf || !configuredAcceptCnpj;
+  const acceptCnpj = configuredAcceptCnpj;
+
+  useEffect(() => {
+    const nextType: CustomerType = !acceptCpf && acceptCnpj
+      ? "company"
+      : customerType === "company" && !acceptCnpj
+        ? "individual"
+        : customerType;
+
+    if (nextType !== customerType) {
+      setCustomerType(nextType);
+      setCustomerName("");
+      setCustomerDocument("");
+      setCustomerStateRegistration("");
+      setCustomerStateRegistrationExempt(false);
+    }
+  }, [acceptCpf, acceptCnpj, customerType]);
 
   // ── Order Bumps ────────────────────────────────────────────────
   // Filtra os bumps aplicáveis à forma de pagamento selecionada.
@@ -784,7 +809,7 @@ function CheckoutPageContent() {
     const name = customerName.trim();
     const email = customerEmail.trim();
     const phone = customerPhone;
-    const document = customerDocument;
+    const document = onlyDigits(customerDocument);
 
     if (name.length < 3 || !email) return;
 
@@ -793,6 +818,9 @@ function CheckoutPageContent() {
       email,
       phone,
       document,
+      person_type: customerType,
+      state_registration: customerType === "company" ? customerStateRegistration : null,
+      state_registration_exempt: customerType === "company" ? customerStateRegistrationExempt : false,
     };
     if (isStoreId) {
       payload.store_id = storeSlug;
@@ -807,7 +835,7 @@ function CheckoutPageContent() {
     } catch {
       /* ignore */
     }
-  }, [customerName, customerEmail, customerPhone, customerDocument, isStoreId, storeSlug, getStoreIdentifier]);
+  }, [customerName, customerEmail, customerPhone, customerDocument, customerType, customerStateRegistration, customerStateRegistrationExempt, isStoreId, storeSlug, getStoreIdentifier]);
 
   // Atualiza o endereço do cliente no backend e na Shopify (best-effort).
   const updateCustomerAddress = useCallback(() => {
@@ -1020,8 +1048,11 @@ function CheckoutPageContent() {
       setStep("dados");
       return;
     }
-    if (docDigits.length !== 11 || !cpfIsValid(docDigits)) {
-      alert("Preencha um CPF válido.");
+    const isCompany = customerType === "company";
+    const documentIsValid = isCompany ? cnpjIsValid(docDigits) : cpfIsValid(docDigits);
+    const documentTypeIsAccepted = isCompany ? acceptCnpj : acceptCpf;
+    if (!documentTypeIsAccepted || !documentIsValid) {
+      alert(`Preencha um ${isCompany ? "CNPJ" : "CPF"} válido.`);
       setStep("dados");
       return;
     }
@@ -1219,7 +1250,10 @@ function CheckoutPageContent() {
         customer_name: customerName.trim(),
         customer_email: customerEmail.trim(),
         customer_phone: customerPhone,
-        customer_document: customerDocument,
+        customer_document: docDigits,
+        customer_type: customerType,
+        customer_state_registration: customerType === "company" ? customerStateRegistration.trim() || null : null,
+        customer_state_registration_exempt: customerType === "company" ? customerStateRegistrationExempt : false,
         payment_method: pm,
         shipping_method_id: selectedShippingMethod?.id ?? null,
         shipping_address: address,
@@ -1682,10 +1716,18 @@ function CheckoutPageContent() {
                 email={customerEmail}
                 phone={customerPhone}
                 document={customerDocument}
+                customerType={customerType}
+                acceptCpf={acceptCpf}
+                acceptCnpj={acceptCnpj}
+                stateRegistration={customerStateRegistration}
+                stateRegistrationExempt={customerStateRegistrationExempt}
                 setName={setCustomerName}
                 setEmail={setCustomerEmail}
                 setPhone={setCustomerPhone}
                 setDocument={setCustomerDocument}
+                setCustomerType={setCustomerType}
+                setStateRegistration={setCustomerStateRegistration}
+                setStateRegistrationExempt={setCustomerStateRegistrationExempt}
                 onContinue={handleDadosContinue}
                 onEdit={() => handleEditStep("dados")}
                 isActive={step === "dados"}
