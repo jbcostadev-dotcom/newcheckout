@@ -358,13 +358,12 @@ function ConfirmedContent() {
     ? order.store_name ?? "Nome da Loja"
     : "";
 
-  const iconColor = settings.header_icon_color || "var(--text-secondary)";
   const logoAlign = settings.header_logo_alignment || "left";
 
   const LogoContent = (
-    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+    <div className="confirmed-store-logo">
       {settings.logo_url && (
-        <img src={settings.logo_url} alt="" style={{ height: 32, borderRadius: 4, objectFit: "contain" }} />
+        <img src={settings.logo_url} alt={storeName} />
       )}
       {(settings.header_store_name_visible ?? true) && !settings.logo_url && (
         <h1 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--text-primary)" }}>
@@ -373,21 +372,6 @@ function ConfirmedContent() {
       )}
     </div>
   );
-
-  const BadgeContent = (settings.header_secure_badge ?? true) ? (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-      </svg>
-      <div style={{ textAlign: "right", lineHeight: 1.2 }}>
-        <div style={{ fontSize: "0.75rem", fontWeight: 700, color: iconColor, letterSpacing: 0.5 }}>PAGAMENTO</div>
-        <div style={{ fontSize: "0.65rem", fontWeight: 600, color: iconColor }}>100% SEGURO</div>
-      </div>
-    </div>
-  ) : null;
-
-  const bannerHeightPx = settings.banner_height === "sm" ? 60 : settings.banner_height === "lg" ? 160 : 100;
 
   return (
     <div style={{
@@ -408,45 +392,18 @@ function ConfirmedContent() {
       )}
       {/* Header */}
       <header style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "16px 32px",
         background: settings.header_bg_color || "var(--card-bg)",
         borderBottom: "1px solid var(--border-color)",
       }}>
-        {logoAlign === "center" ? (
-          <>
-            <div style={{ flex: 1 }} />
-            <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>{LogoContent}</div>
-            <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>{BadgeContent}</div>
-          </>
-        ) : logoAlign === "right" ? (
-          <>
-            <div style={{ flex: 1, display: "flex", justifyContent: "flex-start" }}>{BadgeContent}</div>
-            <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>{LogoContent}</div>
-          </>
-        ) : (
-          <>
-            {LogoContent}
-            {BadgeContent}
-          </>
-        )}
-      </header>
-
-      {/* Announcement Bar */}
-      {(settings.announcement_bar_enabled ?? true) && (
-        <div style={{
-          background: settings.announcement_bar_bg || "#333333",
-          color: settings.announcement_bar_text_color || "#d4a843",
-          textAlign: "center",
-          padding: "8px 16px",
-          fontSize: "0.85rem",
-          fontWeight: 500,
-        }}>
-          {settings.banner_message || "Digite aqui a mensagem"}
+        <div
+          className="confirmed-header-inner"
+          style={{
+            justifyContent: logoAlign === "center" ? "center" : logoAlign === "right" ? "flex-end" : "flex-start",
+          }}
+        >
+          {LogoContent}
         </div>
-      )}
+      </header>
 
       {/* Banner Image */}
       {settings.banner_url && (
@@ -458,7 +415,7 @@ function ConfirmedContent() {
       )}
 
       {/* Main Content */}
-      <main style={{
+      <main className="confirmed-main" style={{
         maxWidth: 800,
         width: "100%",
         margin: "0 auto",
@@ -466,7 +423,7 @@ function ConfirmedContent() {
         flex: 1,
       }}>
         {/* Success Banner */}
-        <div style={{
+        <div className="confirmed-success-card" style={{
           background: "var(--card-bg)",
           border: "1px solid var(--border-color)",
           borderRadius: 12,
@@ -492,7 +449,7 @@ function ConfirmedContent() {
             Pedido confirmado
           </h2>
           <p style={{ fontSize: "0.95rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
-            Você receberá em instantes um e-mail em <strong>{order.customer_email}</strong><br />
+            Você receberá em instantes um e-mail em <strong className="confirmed-break-text">{order.customer_email}</strong><br />
             com os detalhes do seu pedido.
           </p>
         </div>
@@ -507,7 +464,7 @@ function ConfirmedContent() {
         </p>
 
         {/* Customer Info + Address + Payment */}
-        <div style={{
+        <div className="confirmed-info-grid" style={{
           background: "var(--card-bg)",
           border: "1px solid var(--border-color)",
           borderRadius: 12,
@@ -522,7 +479,7 @@ function ConfirmedContent() {
             <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: 12 }}>
               Dados Pessoais
             </h3>
-            <div style={{ fontSize: "0.875rem", color: "var(--text-secondary)", lineHeight: 1.8 }}>
+            <div className="confirmed-break-text" style={{ fontSize: "0.875rem", color: "var(--text-secondary)", lineHeight: 1.8 }}>
               <div>{order.customer_name}</div>
               <div>{formatCPF(order.customer_document)}</div>
               <div>{order.customer_email}</div>
@@ -571,7 +528,7 @@ function ConfirmedContent() {
         </div>
 
         {/* Resumo do Pedido */}
-        <div style={{
+        <div className="confirmed-summary-card" style={{
           background: "var(--card-bg)",
           border: "1px solid var(--border-color)",
           borderRadius: 12,
@@ -582,7 +539,7 @@ function ConfirmedContent() {
           </h3>
 
           {/* Table Header */}
-          <div style={{
+          <div className="confirmed-table-header" style={{
             display: "grid",
             gridTemplateColumns: "2fr 1fr 1fr 1fr",
             gap: 16,
@@ -590,16 +547,17 @@ function ConfirmedContent() {
             borderBottom: "1px solid var(--border-color)",
             marginBottom: 16,
           }}>
-            <div />
-            <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)", textAlign: "center" }}>Quantidade</div>
-            <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)", textAlign: "center" }}>Preço Unitário</div>
-            <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)", textAlign: "right" }}>Total</div>
+            <div className="confirmed-table-spacer" />
+            <div className="confirmed-desktop-column" style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)", textAlign: "center" }}>Quantidade</div>
+            <div className="confirmed-desktop-column" style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)", textAlign: "center" }}>Preço Unitário</div>
+            <div className="confirmed-total-column" style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)", textAlign: "right" }}>Total</div>
           </div>
 
           {/* Items */}
           {order.items.map((item) => (
             <div
               key={item.id}
+              className="confirmed-items-grid"
               style={{
                 display: "grid",
                 gridTemplateColumns: "2fr 1fr 1fr 1fr",
@@ -609,7 +567,7 @@ function ConfirmedContent() {
                 borderBottom: "1px solid var(--border-color)",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div className="confirmed-product-cell" style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 {item.image_url ? (
                   <img
                     src={item.image_url}
@@ -619,18 +577,18 @@ function ConfirmedContent() {
                 ) : (
                   <div style={{ width: 56, height: 56, background: "var(--border-color)", borderRadius: 8 }} />
                 )}
-                <div>
-                  <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text-primary)" }}>{item.name}</div>
+                <div className="confirmed-product-copy">
+                  <div className="confirmed-break-text" style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text-primary)" }}>{item.name}</div>
                   {item.attributes && item.attributes.length > 0 && (
-                    <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                    <div className="confirmed-break-text" style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
                       {item.attributes.map((a) => `${a.name}: ${a.value}`).join(" | ")}
                     </div>
                   )}
                 </div>
               </div>
-              <div style={{ fontSize: "0.875rem", color: "var(--text-secondary)", textAlign: "center" }}>{item.qty}</div>
-              <div style={{ fontSize: "0.875rem", color: "var(--text-secondary)", textAlign: "center" }}>{formatCurrency(item.unit_price)}</div>
-              <div style={{ fontSize: "0.875rem", color: "var(--text-secondary)", textAlign: "right" }}>{formatCurrency(item.total)}</div>
+              <div className="confirmed-desktop-column" style={{ fontSize: "0.875rem", color: "var(--text-secondary)", textAlign: "center" }}>{item.qty}</div>
+              <div className="confirmed-desktop-column" style={{ fontSize: "0.875rem", color: "var(--text-secondary)", textAlign: "center" }}>{formatCurrency(item.unit_price)}</div>
+              <div className="confirmed-total-column" style={{ fontSize: "0.875rem", color: "var(--text-secondary)", textAlign: "right" }}>{formatCurrency(item.total)}</div>
             </div>
           ))}
 
@@ -674,12 +632,108 @@ function ConfirmedContent() {
 
       {/* Responsive */}
       <style>{`
+        .confirmed-header-inner {
+          display: flex;
+          align-items: center;
+          width: 100%;
+          max-width: 800px;
+          min-height: 64px;
+          margin: 0 auto;
+          padding: 16px 24px;
+        }
+        .confirmed-store-logo {
+          display: flex;
+          align-items: center;
+          min-width: 0;
+        }
+        .confirmed-store-logo img {
+          display: block;
+          width: auto;
+          max-width: 100%;
+          height: 32px;
+          border-radius: 4px;
+          object-fit: contain;
+        }
+        .confirmed-info-grid,
+        .confirmed-items-grid,
+        .confirmed-table-header {
+          min-width: 0;
+        }
+        .confirmed-product-cell,
+        .confirmed-product-copy {
+          min-width: 0;
+        }
+        .confirmed-product-cell img,
+        .confirmed-product-cell > div:first-child:not(.confirmed-product-copy) {
+          flex-shrink: 0;
+        }
+        .confirmed-break-text {
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
         @media (max-width: 768px) {
+          .confirmed-header-inner {
+            min-height: 60px;
+            padding: 14px 16px;
+          }
+          .confirmed-main {
+            padding: 24px 16px !important;
+          }
+          .confirmed-success-card {
+            padding: 24px 16px !important;
+          }
           .confirmed-info-grid {
             grid-template-columns: 1fr !important;
+            gap: 28px !important;
+            padding: 20px !important;
           }
+          .confirmed-summary-card {
+            padding: 20px !important;
+          }
+          .confirmed-table-header,
           .confirmed-items-grid {
-            grid-template-columns: 1fr !important;
+            grid-template-columns: minmax(0, 1fr) auto !important;
+            gap: 12px !important;
+          }
+          .confirmed-table-spacer {
+            display: block;
+          }
+          .confirmed-desktop-column {
+            display: none !important;
+          }
+          .confirmed-total-column {
+            min-width: max-content;
+            align-self: center;
+          }
+          .confirmed-product-cell {
+            align-items: flex-start !important;
+          }
+          .confirmed-product-cell img,
+          .confirmed-product-cell > div:first-child:not(.confirmed-product-copy) {
+            width: 64px !important;
+            height: 64px !important;
+          }
+        }
+        @media (max-width: 380px) {
+          .confirmed-main {
+            padding-right: 12px !important;
+            padding-left: 12px !important;
+          }
+          .confirmed-summary-card,
+          .confirmed-info-grid {
+            padding: 16px !important;
+          }
+          .confirmed-table-header,
+          .confirmed-items-grid {
+            gap: 8px !important;
+          }
+          .confirmed-product-cell {
+            gap: 8px !important;
+          }
+          .confirmed-product-cell img,
+          .confirmed-product-cell > div:first-child:not(.confirmed-product-copy) {
+            width: 52px !important;
+            height: 52px !important;
           }
         }
       `}</style>
