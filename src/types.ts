@@ -121,6 +121,16 @@ export interface OrderBumpOffer {
   scarcity_timer_minutes: number;
 }
 
+export interface GiftOffer {
+  id: number;
+  name: string;
+  rule_type: "always" | "min_quantity" | "min_value";
+  min_quantity?: number | null;
+  min_value?: number | null;
+  scope: "any" | "specific";
+  products: CheckoutProduct[];
+}
+
 export interface InstallmentConfig {
   type: "default" | "custom";
   default_rate: number;
@@ -151,6 +161,13 @@ export interface CheckoutData {
       order_bump_border_color?: string;
       order_bump_button_color?: string;
       order_bump_button_text_color?: string;
+      gift_bg_color?: string;
+      gift_border_color?: string;
+      gift_badge_bg_color?: string;
+      gift_badge_border_color?: string;
+      gift_badge_text_color?: string;
+      gift_progress_color?: string;
+      gift_progress_bg_color?: string;
       header_store_name_visible?: boolean;
       header_secure_badge?: boolean;
       header_logo_alignment?: string;
@@ -225,6 +242,7 @@ export interface CheckoutData {
   shipping_methods: ShippingMethod[];
   social_proofs?: SocialProofItem[];
   order_bumps?: OrderBumpOffer[];
+  gifts?: GiftOffer[];
   preview?: boolean;
 }
 

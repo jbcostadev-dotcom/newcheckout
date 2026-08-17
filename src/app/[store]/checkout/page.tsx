@@ -28,6 +28,7 @@ import StepDados, { type CustomerType } from "@/components/StepDados";
 import StepEntrega from "@/components/StepEntrega";
 import StepPagamento from "@/components/StepPagamento";
 import OrderSummary, { GroupedItem } from "@/components/OrderSummary";
+import { isGiftEligible } from "@/components/GiftOfferCard";
 import SocialProofs from "@/components/SocialProofs";
 import Footer from "@/components/Footer";
 import ScarcityBar from "@/components/ScarcityBar";
@@ -304,6 +305,7 @@ function CheckoutPageContent() {
 
   const [orderPaid, setOrderPaid] = useState(false);
   const [quantityAdjustments, setQuantityAdjustments] = useState<Record<number, number>>({});
+  const [giftSelections, setGiftSelections] = useState<Record<number, number>>({});
 
   const [modalCardRefused, setModalCardRefused] = useState(false);
   const [modalCardLimit, setModalCardLimit] = useState(false);
@@ -483,6 +485,13 @@ function CheckoutPageContent() {
     root.style.setProperty("--order-bump-border-color", s.order_bump_border_color || "#E2E8F0");
     root.style.setProperty("--order-bump-button-color", s.order_bump_button_color || "#13BF8C");
     root.style.setProperty("--order-bump-button-text-color", s.order_bump_button_text_color || "#FFFFFF");
+    root.style.setProperty("--gift-bg-color", s.gift_bg_color || "#F7FFFA");
+    root.style.setProperty("--gift-border-color", s.gift_border_color || "#A4DFC1");
+    root.style.setProperty("--gift-badge-bg-color", s.gift_badge_bg_color || "#FFFFFF");
+    root.style.setProperty("--gift-badge-border-color", s.gift_badge_border_color || "#6EE7B7");
+    root.style.setProperty("--gift-badge-text-color", s.gift_badge_text_color || "#10B981");
+    root.style.setProperty("--gift-progress-color", s.gift_progress_color || "#10B981");
+    root.style.setProperty("--gift-progress-bg-color", s.gift_progress_bg_color || "#E5E7EB");
     root.style.setProperty(
       "--input-border-radius",
       s.input_border_radius === "none" ? "0" : s.input_border_radius === "large" ? "16px" : "8px"
@@ -558,6 +567,36 @@ function CheckoutPageContent() {
   const subtotal = groupedItems.reduce(
     (sum, g) => sum + Number(g.product.price) * g.qty,
     0
+  );
+  const cartQuantity = groupedItems.reduce((sum, item) => sum + item.qty, 0);
+  const giftOffers = useMemo(() => data?.gifts ?? [], [data?.gifts]);
+  const eligibleGiftOffers = useMemo(
+    () => giftOffers.filter((gift) => isGiftEligible(gift, cartQuantity, subtotal)),
+    [giftOffers, cartQuantity, subtotal]
+  );
+
+  useEffect(() => {
+    setGiftSelections((current) => {
+      const next: Record<number, number> = {};
+      for (const gift of giftOffers) {
+        const selected = current[gift.id];
+        const fallback = gift.products[0]?.id;
+        if (gift.products.some((product) => product.id === selected)) {
+          next[gift.id] = selected;
+        } else if (fallback !== undefined) {
+          next[gift.id] = fallback;
+        }
+      }
+      return next;
+    });
+  }, [giftOffers]);
+
+  const checkoutGiftSelections = useMemo(
+    () =>
+      eligibleGiftOffers
+        .map((gift) => ({ gift_id: gift.id, product_id: giftSelections[gift.id] }))
+        .filter((selection) => Number.isInteger(selection.product_id)),
+    [eligibleGiftOffers, giftSelections]
   );
 
   const shippingAddressComplete =
@@ -1247,6 +1286,7 @@ function CheckoutPageContent() {
       }));
       const payload: Record<string, unknown> = {
         items,
+        gift_selections: checkoutGiftSelections,
         customer_name: customerName.trim(),
         customer_email: customerEmail.trim(),
         customer_phone: customerPhone,
@@ -1822,6 +1862,13 @@ function CheckoutPageContent() {
                   settings.quantity_selector_enabled ?? true
                     ? handleQuantityChange
                     : undefined
+                }
+                giftOffers={giftOffers}
+                giftSelections={giftSelections}
+                cartQuantity={cartQuantity}
+                cartSubtotal={subtotal}
+                onGiftSelectionChange={(giftId, productId) =>
+                  setGiftSelections((current) => ({ ...current, [giftId]: productId }))
                 }
               />
             </div>

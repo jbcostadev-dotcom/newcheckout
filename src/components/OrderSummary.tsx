@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import { formatCurrency } from "@/lib/utils";
 import { calculateInstallmentValue } from "@/lib/installments";
 import type { CheckoutProduct, InstallmentConfig, ValidatedCoupon } from "@/types";
+import type { GiftOffer } from "@/types";
+import GiftOfferCard from "@/components/GiftOfferCard";
 
 export interface GroupedItem {
   product: CheckoutProduct;
@@ -30,6 +32,11 @@ interface OrderSummaryProps {
   appliedCoupon?: ValidatedCoupon | null;
   applyingCoupon?: boolean;
   couponError?: string | null;
+  giftOffers?: GiftOffer[];
+  giftSelections?: Record<number, number>;
+  cartQuantity?: number;
+  cartSubtotal?: number;
+  onGiftSelectionChange?: (giftId: number, productId: number) => void;
 }
 
 export default function OrderSummary({
@@ -52,6 +59,11 @@ export default function OrderSummary({
   appliedCoupon,
   applyingCoupon = false,
   couponError = null,
+  giftOffers = [],
+  giftSelections = {},
+  cartQuantity = 0,
+  cartSubtotal = 0,
+  onGiftSelectionChange,
 }: OrderSummaryProps) {
   const finalTotal = total - discount;
   const productTotal = subtotal !== undefined ? subtotal : total - shipping;
@@ -372,6 +384,21 @@ export default function OrderSummary({
           </div>
         ))}
       </div>
+
+      {giftOffers.length > 0 && onGiftSelectionChange && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 16 }}>
+          {giftOffers.map((gift) => (
+            <GiftOfferCard
+              key={gift.id}
+              gift={gift}
+              cartQuantity={cartQuantity}
+              cartSubtotal={cartSubtotal}
+              selectedProductId={giftSelections[gift.id]}
+              onSelect={(productId) => onGiftSelectionChange(gift.id, productId)}
+            />
+          ))}
+        </div>
+      )}
 
       </div>
 
